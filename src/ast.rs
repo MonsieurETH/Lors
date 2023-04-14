@@ -2,7 +2,98 @@ use crate::lexer::{Token, TokenType};
 use crate::parser::Type;
 use crate::Interpreter;
 
-#[derive(Debug, Clone)]
+macro_rules! define_ast {
+    (pub enum $root:ident { $($n:ident: $t:ident $b:tt),* $(,)? }) => {
+        #[derive(Clone, PartialEq, Debug)]
+        pub enum $root {
+            $($n($n)),*
+        }
+
+        $(
+            #[derive(Clone, PartialEq, Debug)]
+            pub $t $n $b
+        )*
+    }
+}
+
+//#[derive(Clone,PartialEq,Debug)]
+//pub enum Expr {
+//    Var(Var),Value(Value),Assign(Assign),Grouping(Grouping),Unary(Unary),Binary(Binary),Logical(Logical),Call(Call)
+//  }
+//  #[derive(Clone,PartialEq,Debug)]
+//  pub struct Var {
+//    var:Box<Token>,
+//  }
+//  #[derive(Clone,PartialEq,Debug)]
+//  pub struct Value {
+//    ty:Type,
+//  }
+
+define_ast!(
+    pub enum Expr {
+        Var: struct {
+            pub var: Box<Token>,
+        },
+        Value: struct {
+            pub ty: Type,
+        },
+        Assign: struct {
+            pub var: Box<Token>,
+            pub expr: Box<Expr>
+        },
+        Grouping: struct {
+            pub group: Box<Expr>
+        },
+        Unary: struct {
+            pub operator: Operator,
+            pub right: Box<Expr>,
+        },
+        Binary: struct {
+            pub left: Box<Expr>,
+            pub operator: Operator,
+            pub right: Box<Expr>,
+        },
+        Logical: struct {
+            pub left: Box<Expr>,
+            pub operator: Operator,
+            pub right: Box<Expr>,
+        },
+        Call: struct {
+            pub callee: Box<Expr>,
+            pub paren: Box<Token>,
+            pub arguments: Vec<Expr>,
+        },
+    }
+);
+
+define_ast!(
+    pub enum Stmt {
+        Print: struct {
+            pub expr: Box<Expr>
+        },
+        Expression: struct {
+            pub expr: Box<Expr>
+        },
+        VarDecl: struct {
+            pub name: String,
+            pub expr: Box<Expr>
+        },
+        Block: struct {
+            pub stmts: Vec<Stmt>
+        },
+        If: struct {
+            pub condition: Box<Expr>,
+            pub branch_true: Box<Stmt>,
+            pub branch_false: Box<Stmt>
+        },
+        While: struct {
+            pub condition: Box<Expr>,
+            pub body: Box<Stmt>
+        },
+    }
+);
+
+#[derive(Debug, Clone, PartialEq)]
 pub enum Operator {
     Bang,
     BangEqual,
@@ -70,14 +161,18 @@ impl Operator {
 
     fn minus(self, expr: Expr) -> Expr {
         match expr {
-            Expr::Value(Type::Number(n)) => Expr::Value(Type::Number(-n)),
+            Expr::Value(Value {
+                ty: Type::Number(n),
+            }) => Expr::Value(Value {
+                ty: Type::Number(-n),
+            }),
             _ => panic!("Operand must be a number"),
         }
     }
 
     fn negation(self, expr: Expr) -> Expr {
         match expr {
-            Expr::Value(Type::Bool(b)) => Expr::Value(Type::Bool(!b)),
+            Expr::Value(Value { ty: Type::Bool(b) }) => Expr::Value(Value { ty: Type::Bool(!b) }),
             _ => panic!("Operand must be a bool"),
         }
     }
@@ -116,11 +211,21 @@ impl Operator {
 
     fn addition(self, left: Expr, right: Expr) -> Expr {
         match (left, right) {
-            (Expr::Value(Type::Number(l)), Expr::Value(Type::Number(r))) => {
-                Expr::Value(Type::Number(l + r))
-            }
-            (Expr::Value(Type::Str(l)), Expr::Value(Type::Str(r))) => {
-                Expr::Value(Type::Str(l + &r))
+            (
+                Expr::Value(Value {
+                    ty: Type::Number(l),
+                }),
+                Expr::Value(Value {
+                    ty: Type::Number(r),
+                }),
+            ) => Expr::Value(Value {
+                ty: Type::Number(l + r),
+            }),
+
+            (Expr::Value(Value { ty: Type::Str(l) }), Expr::Value(Value { ty: Type::Str(r) })) => {
+                Expr::Value(Value {
+                    ty: Type::Str(l + &r),
+                })
             }
             _ => panic!("Operands must be two numbers or two strings"),
         }
@@ -128,41 +233,74 @@ impl Operator {
 
     fn subtraction(self, left: Expr, right: Expr) -> Expr {
         match (left, right) {
-            (Expr::Value(Type::Number(l)), Expr::Value(Type::Number(r))) => {
-                Expr::Value(Type::Number(l - r))
-            }
+            (
+                Expr::Value(Value {
+                    ty: Type::Number(l),
+                }),
+                Expr::Value(Value {
+                    ty: Type::Number(r),
+                }),
+            ) => Expr::Value(Value {
+                ty: Type::Number(l - r),
+            }),
             _ => panic!("Operands must be numbers"),
         }
     }
 
     fn multiplication(self, left: Expr, right: Expr) -> Expr {
         match (left, right) {
-            (Expr::Value(Type::Number(l)), Expr::Value(Type::Number(r))) => {
-                Expr::Value(Type::Number(l * r))
-            }
+            (
+                Expr::Value(Value {
+                    ty: Type::Number(l),
+                }),
+                Expr::Value(Value {
+                    ty: Type::Number(r),
+                }),
+            ) => Expr::Value(Value {
+                ty: Type::Number(l * r),
+            }),
             _ => panic!("Operands must be numbers"),
         }
     }
 
     fn division(self, left: Expr, right: Expr) -> Expr {
         match (left, right) {
-            (Expr::Value(Type::Number(l)), Expr::Value(Type::Number(r))) => {
-                Expr::Value(Type::Number(l / r))
-            }
+            (
+                Expr::Value(Value {
+                    ty: Type::Number(l),
+                }),
+                Expr::Value(Value {
+                    ty: Type::Number(r),
+                }),
+            ) => Expr::Value(Value {
+                ty: Type::Number(l / r),
+            }),
             _ => panic!("Operands must be numbers"),
         }
     }
 
     fn equal_equal(self, left: Expr, right: Expr) -> Expr {
         match (left, right) {
-            (Expr::Value(Type::Bool(l)), Expr::Value(Type::Bool(r))) => {
-                Expr::Value(Type::Bool(l == r))
-            }
-            (Expr::Value(Type::Number(l)), Expr::Value(Type::Number(r))) => {
-                Expr::Value(Type::Bool(l == r))
-            }
-            (Expr::Value(Type::Str(l)), Expr::Value(Type::Str(r))) => {
-                Expr::Value(Type::Bool(l == r))
+            (
+                Expr::Value(Value { ty: Type::Bool(l) }),
+                Expr::Value(Value { ty: Type::Bool(r) }),
+            ) => Expr::Value(Value {
+                ty: Type::Bool(l == r),
+            }),
+            (
+                Expr::Value(Value {
+                    ty: Type::Number(l),
+                }),
+                Expr::Value(Value {
+                    ty: Type::Number(r),
+                }),
+            ) => Expr::Value(Value {
+                ty: Type::Bool(l == r),
+            }),
+            (Expr::Value(Value { ty: Type::Str(l) }), Expr::Value(Value { ty: Type::Str(r) })) => {
+                Expr::Value(Value {
+                    ty: Type::Bool(l == r),
+                })
             }
             _ => panic!("Operands must be of the same type"),
         }
@@ -170,14 +308,26 @@ impl Operator {
 
     fn bang_equal(self, left: Expr, right: Expr) -> Expr {
         match (left, right) {
-            (Expr::Value(Type::Bool(l)), Expr::Value(Type::Bool(r))) => {
-                Expr::Value(Type::Bool(l != r))
-            }
-            (Expr::Value(Type::Number(l)), Expr::Value(Type::Number(r))) => {
-                Expr::Value(Type::Bool(l != r))
-            }
-            (Expr::Value(Type::Str(l)), Expr::Value(Type::Str(r))) => {
-                Expr::Value(Type::Bool(l != r))
+            (
+                Expr::Value(Value { ty: Type::Bool(l) }),
+                Expr::Value(Value { ty: Type::Bool(r) }),
+            ) => Expr::Value(Value {
+                ty: Type::Bool(l != r),
+            }),
+            (
+                Expr::Value(Value {
+                    ty: Type::Number(l),
+                }),
+                Expr::Value(Value {
+                    ty: Type::Number(r),
+                }),
+            ) => Expr::Value(Value {
+                ty: Type::Bool(l != r),
+            }),
+            (Expr::Value(Value { ty: Type::Str(l) }), Expr::Value(Value { ty: Type::Str(r) })) => {
+                Expr::Value(Value {
+                    ty: Type::Bool(l != r),
+                })
             }
             _ => panic!("Operands must be of the same type"),
         }
@@ -185,49 +335,67 @@ impl Operator {
 
     fn greater_than(self, left: Expr, right: Expr) -> Expr {
         match (left, right) {
-            (Expr::Value(Type::Number(l)), Expr::Value(Type::Number(r))) => {
-                Expr::Value(Type::Bool(l > r))
-            }
+            (
+                Expr::Value(Value {
+                    ty: Type::Number(l),
+                }),
+                Expr::Value(Value {
+                    ty: Type::Number(r),
+                }),
+            ) => Expr::Value(Value {
+                ty: Type::Bool(l > r),
+            }),
             _ => panic!("Operands must be numbers"),
         }
     }
 
     fn greater_than_or_equal(self, left: Expr, right: Expr) -> Expr {
         match (left, right) {
-            (Expr::Value(Type::Number(l)), Expr::Value(Type::Number(r))) => {
-                Expr::Value(Type::Bool(l >= r))
-            }
+            (
+                Expr::Value(Value {
+                    ty: Type::Number(l),
+                }),
+                Expr::Value(Value {
+                    ty: Type::Number(r),
+                }),
+            ) => Expr::Value(Value {
+                ty: Type::Bool(l >= r),
+            }),
             _ => panic!("Operands must be numbers"),
         }
     }
 
     fn less_than(self, left: Expr, right: Expr) -> Expr {
         match (left, right) {
-            (Expr::Value(Type::Number(l)), Expr::Value(Type::Number(r))) => {
-                Expr::Value(Type::Bool(l < r))
-            }
+            (
+                Expr::Value(Value {
+                    ty: Type::Number(l),
+                }),
+                Expr::Value(Value {
+                    ty: Type::Number(r),
+                }),
+            ) => Expr::Value(Value {
+                ty: Type::Bool(l < r),
+            }),
             _ => panic!("Operands must be numbers"),
         }
     }
 
     fn less_than_or_equal(self, left: Expr, right: Expr) -> Expr {
         match (left, right) {
-            (Expr::Value(Type::Number(l)), Expr::Value(Type::Number(r))) => {
-                Expr::Value(Type::Bool(l <= r))
-            }
+            (
+                Expr::Value(Value {
+                    ty: Type::Number(l),
+                }),
+                Expr::Value(Value {
+                    ty: Type::Number(r),
+                }),
+            ) => Expr::Value(Value {
+                ty: Type::Bool(l <= r),
+            }),
             _ => panic!("Operands must be numbers"),
         }
     }
-}
-
-#[derive(Debug, Clone)]
-pub enum Stmt {
-    Print(Box<Expr>),
-    Expression(Box<Expr>),
-    VarDecl(String, Box<Expr>),
-    Block(Vec<Stmt>),
-    If(Box<Expr>, Box<Stmt>, Box<Stmt>),
-    While(Box<Expr>, Box<Stmt>),
 }
 
 impl Stmt {
@@ -235,67 +403,27 @@ impl Stmt {
         match self {
             Stmt::Expression(_) => visitor.visit_stmt_expr(&self),
             Stmt::Print(_) => visitor.visit_stmt_print(&self),
-            Stmt::VarDecl(_, _) => visitor.visit_var_decl(&self),
+            Stmt::VarDecl(_) => visitor.visit_var_decl(&self),
             Stmt::Block(_) => visitor.visit_block(&self),
-            Stmt::If(_, _, _) => visitor.visit_if(&self),
-            Stmt::While(_, _) => visitor.visit_while(&self),
+            Stmt::If(_) => visitor.visit_if(&self),
+            Stmt::While(_) => visitor.visit_while(&self),
         }
     }
 }
 
-#[derive(Debug, Clone)]
-pub enum Expr {
-    Var(Box<Token>),
-    Value(Type),
-    Assign(Box<Token>, Box<Expr>),
-    Grouping(Box<Expr>),
-    Unary {
-        operator: Operator,
-        right: Box<Expr>,
-    },
-    Binary {
-        left: Box<Expr>,
-        operator: Operator,
-        right: Box<Expr>,
-    },
-    Logical {
-        left: Box<Expr>,
-        operator: Operator,
-        right: Box<Expr>,
-    },
-    Call {
-        callee: Box<Expr>,
-        paren: Box<Token>,
-        arguments: Vec<Expr>,
-    },
-}
+//#[derive(Debug, Clone)]
 
 impl Expr {
     pub fn accept<'a, T: IVisitorExpr<'a, U>, U>(&'a self, visitor: &mut T) -> U {
         match self {
             Expr::Var(_) => visitor.visit_var(&self),
             Expr::Value(_) => visitor.visit_value(&self),
-            Expr::Unary {
-                operator: _,
-                right: _,
-            } => visitor.visit_unary(&self),
-            Expr::Binary {
-                left: _,
-                operator: _,
-                right: _,
-            } => visitor.visit_binary(&self),
+            Expr::Unary(_) => visitor.visit_unary(&self),
+            Expr::Binary(_) => visitor.visit_binary(&self),
             Expr::Grouping(_) => visitor.visit_grouping(&self),
-            Expr::Assign(_, _) => visitor.visit_assign(&self),
-            Expr::Logical {
-                left: _,
-                operator: _,
-                right: _,
-            } => visitor.visit_logical(&self),
-            Expr::Call {
-                callee,
-                paren,
-                arguments,
-            } => visitor.visit_call(&self),
+            Expr::Assign(_) => visitor.visit_assign(&self),
+            Expr::Logical(_) => visitor.visit_logical(&self),
+            Expr::Call(_) => visitor.visit_call(&self),
         }
     }
 }

@@ -35,7 +35,10 @@
 //logic_or       → logic_and ( "or" logic_and )* ;
 //logic_and      → equality ( "and" equality )* ;
 
-use crate::ast::{Expr, Operator, Stmt};
+use crate::ast::{
+    Assign, Binary, Block, Expr, Expression, Grouping, If, Logical, Operator, Print, Stmt, Unary,
+    Value, Var, VarDecl, While,
+};
 use crate::lexer::{Literal, Token, TokenType};
 
 #[derive(Debug, Clone)]
@@ -103,7 +106,7 @@ impl Parser {
                 .lexeme
                 .to_owned();
         }
-        let mut value = Expr::Value(Type::Nil);
+        let mut value = Expr::Value(Value { ty: Type::Nil });
         if self.ismatch(&[TokenType::Equal]) {
             value = self.expression();
         }
@@ -113,14 +116,19 @@ impl Parser {
                 "Expect ';' after variable declaration.",
             );
         }
-        Stmt::VarDecl(name, Box::new(value))
+        Stmt::VarDecl(VarDecl {
+            name,
+            expr: Box::new(value),
+        })
     }
 
     fn statement(&mut self) -> Stmt {
         if self.ismatch(&[TokenType::Print]) {
             self.print_stmt()
         } else if self.ismatch(&[TokenType::LeftBrace]) {
-            Stmt::Block(self.block())
+            Stmt::Block(Block {
+                stmts: self.block(),
+            })
         } else if self.ismatch(&[TokenType::If]) {
             self.if_stmt()
         } else if self.ismatch(&[TokenType::While]) {
@@ -137,16 +145,18 @@ impl Parser {
         let condition: Expr = self.expression();
         self.consume(TokenType::RightParen, "Expect ')' after if condition");
         let true_branch = self.statement();
-        let mut false_branch = Stmt::Expression(Box::new(Expr::Value(Type::Nil))); // TODO too hacky!
+        let mut false_branch = Stmt::Expression(Expression {
+            expr: Box::new(Expr::Value(Value { ty: Type::Nil })),
+        }); // TODO too hacky!
         if self.ismatch(&[TokenType::Else]) {
             false_branch = self.statement();
         }
 
-        Stmt::If(
-            Box::new(condition),
-            Box::new(true_branch),
-            Box::new(false_branch),
-        )
+        Stmt::If(If {
+            condition: Box::new(condition),
+            branch_true: Box::new(true_branch),
+            branch_false: Box::new(false_branch),
+        })
     }
 
     fn for_stmt(&mut self) -> Stmt {
@@ -176,7 +186,14 @@ impl Parser {
         let mut body: Stmt = self.statement();
 
         body = if let Some(inc) = increment {
-            Stmt::Block(vec![body, Stmt::Expression(Box::new(inc))])
+            Stmt::Block(Block {
+                stmts: vec![
+                    body,
+                    Stmt::Expression(Expression {
+                        expr: Box::new(inc),
+                    }),
+                ],
+            })
         } else {
             body
         };
@@ -184,12 +201,19 @@ impl Parser {
         let cond = if let Some(cond) = condition {
             cond
         } else {
-            Expr::Value(Type::Bool(true))
+            Expr::Value(Value {
+                ty: Type::Bool(true),
+            })
         };
-        body = Stmt::While(Box::new(cond), Box::new(body));
+        body = Stmt::While(While {
+            condition: Box::new(cond),
+            body: Box::new(body),
+        });
 
         body = if let Some(init) = initializer {
-            Stmt::Block(vec![init, body])
+            Stmt::Block(Block {
+                stmts: vec![init, body],
+            })
         } else {
             body
         };
@@ -203,7 +227,10 @@ impl Parser {
         self.consume(TokenType::RightParen, "Expect ')' after if condition");
         let body = self.statement();
 
-        Stmt::While(Box::new(condition), Box::new(body))
+        Stmt::While(While {
+            condition: Box::new(condition),
+            body: Box::new(body),
+        })
     }
 
     fn block(&mut self) -> Vec<Stmt> {
@@ -220,13 +247,17 @@ impl Parser {
     fn expr_stmt(&mut self) -> Stmt {
         let value: Expr = self.expression();
         self.consume(TokenType::Semicolon, "Expect ';' after value.");
-        Stmt::Expression(Box::new(value))
+        Stmt::Expression(Expression {
+            expr: Box::new(value),
+        })
     }
 
     fn print_stmt(&mut self) -> Stmt {
         let value: Expr = self.expression();
         self.consume(TokenType::Semicolon, "Expect ';' after value.");
-        Stmt::Print(Box::new(value))
+        Stmt::Print(Print {
+            expr: Box::new(value),
+        })
     }
 
     fn expression(&mut self) -> Expr {
@@ -241,7 +272,10 @@ impl Parser {
             let value: Expr = self.assigment();
 
             match expr {
-                Expr::Var(token) => Expr::Assign(token, Box::new(value)),
+                Expr::Var(Var { var }) => Expr::Assign(Assign {
+                    var,
+                    expr: Box::new(value),
+                }),
                 _ => panic!("Invalid assignment target:"),
             }
         } else {
@@ -254,11 +288,11 @@ impl Parser {
         while self.ismatch(&[TokenType::Or]) {
             let operator: Operator = Operator::from_token(self.previous());
             let right: Expr = self.and();
-            expr = Expr::Logical {
+            expr = Expr::Logical(Logical {
                 left: Box::new(expr),
                 operator,
                 right: Box::new(right),
-            };
+            });
         }
         expr
     }
@@ -268,11 +302,11 @@ impl Parser {
         while self.ismatch(&[TokenType::And]) {
             let operator: Operator = Operator::from_token(self.previous());
             let right: Expr = self.and();
-            expr = Expr::Logical {
+            expr = Expr::Logical(Logical {
                 left: Box::new(expr),
                 operator,
                 right: Box::new(right),
-            };
+            });
         }
         expr
     }
@@ -283,11 +317,11 @@ impl Parser {
         while self.ismatch(&[TokenType::BangEqual, TokenType::EqualEqual]) {
             let operator: Operator = Operator::from_token(self.previous());
             let right: Expr = self.comparison();
-            expr = Expr::Binary {
+            expr = Expr::Binary(Binary {
                 left: Box::new(expr),
                 operator,
                 right: Box::new(right),
-            };
+            });
         }
 
         expr
@@ -304,11 +338,11 @@ impl Parser {
         ]) {
             let operator: Operator = Operator::from_token(self.previous());
             let right: Expr = self.term();
-            expr = Expr::Binary {
+            expr = Expr::Binary(Binary {
                 left: Box::new(expr),
                 operator,
                 right: Box::new(right),
-            };
+            });
         }
 
         expr
@@ -320,11 +354,11 @@ impl Parser {
         while self.ismatch(&[TokenType::Minus, TokenType::Plus]) {
             let operator: Operator = Operator::from_token(self.previous());
             let right: Expr = self.factor();
-            expr = Expr::Binary {
+            expr = Expr::Binary(Binary {
                 left: Box::new(expr),
                 operator,
                 right: Box::new(right),
-            };
+            });
         }
 
         expr
@@ -336,11 +370,11 @@ impl Parser {
         while self.ismatch(&[TokenType::Slash, TokenType::Star]) {
             let operator: Operator = Operator::from_token(self.previous());
             let right: Expr = self.unary();
-            expr = Expr::Binary {
+            expr = Expr::Binary(Binary {
                 left: Box::new(expr),
                 operator,
                 right: Box::new(right),
-            };
+            });
         }
 
         expr
@@ -350,10 +384,10 @@ impl Parser {
         if self.ismatch(&[TokenType::Bang, TokenType::Minus]) {
             let operator: Operator = Operator::from_token(self.previous());
             let right: Expr = self.factor();
-            let expr = Expr::Unary {
+            let expr = Expr::Unary(Unary {
                 operator,
                 right: Box::new(right),
-            };
+            });
 
             return expr;
         }
@@ -390,24 +424,33 @@ impl Parser {
         }
 
         let paren = self.consume(TokenType::RightParen, "Expect ')' after arguments.");
-        Expr::Call {
-            callee: Box::new(callee),
-            paren: Box::new(paren.clone()), // TODO: Fix this
-            arguments,
-        }
+        callee
+        //Expr::Call {
+        //    callee: Box::new(callee),
+        //    paren: Box::new(paren.clone()), // TODO: Fix this
+        //    arguments,
+        //}
     }
 
     fn primary(&mut self) -> Expr {
         if self.ismatch(&[TokenType::False]) {
-            Expr::Value(Type::Bool(false))
+            Expr::Value(Value {
+                ty: Type::Bool(false),
+            })
         } else if self.ismatch(&[TokenType::True]) {
-            Expr::Value(Type::Bool(true))
+            Expr::Value(Value {
+                ty: Type::Bool(true),
+            })
         } else if self.ismatch(&[TokenType::Nil]) {
-            Expr::Value(Type::Nil)
+            Expr::Value(Value { ty: Type::Nil })
         } else if self.ismatch(&[TokenType::String, TokenType::Number]) {
             let expr: Expr = match self.previous().literal.as_ref().unwrap() {
-                Literal::Number(n) => Expr::Value(Type::Number(*n)),
-                Literal::Str(s) => Expr::Value(Type::Str(s.to_owned())),
+                Literal::Number(n) => Expr::Value(Value {
+                    ty: Type::Number(*n),
+                }),
+                Literal::Str(s) => Expr::Value(Value {
+                    ty: Type::Str(s.to_owned()),
+                }),
                 _ => panic!("Invalid type"),
             };
             expr
@@ -415,9 +458,13 @@ impl Parser {
             let expr: Expr = self.expression();
             self.consume(TokenType::RightParen, "Expected ')' after expression.");
 
-            Expr::Grouping(Box::new(expr))
+            Expr::Grouping(Grouping {
+                group: Box::new(expr),
+            })
         } else if self.ismatch(&[TokenType::Identifier]) {
-            Expr::Var(Box::new(self.previous().to_owned()))
+            Expr::Var(Var {
+                var: Box::new(self.previous().to_owned()),
+            })
         } else {
             panic!("Invalid type")
         }

@@ -1,6 +1,9 @@
 use std::collections::HashMap;
 
-use crate::ast::{Callable, Expr, IVisitorExpr, IVisitorStmt, Operator, Stmt};
+use crate::ast::{
+    Assign, Binary, Block, Callable, Expr, Expression, Grouping, IVisitorExpr, IVisitorStmt, If,
+    Logical, Operator, Print, Stmt, Unary, Value, Var, VarDecl, While,
+};
 use crate::parser::Type;
 
 #[derive(Debug)]
@@ -73,7 +76,7 @@ impl Interpreter {
 
 impl<'a> IVisitorStmt<'a, ()> for Interpreter {
     fn visit_stmt_expr(&mut self, stmt: &'a Stmt) {
-        if let Stmt::Expression(expr) = stmt {
+        if let Stmt::Expression(Expression { expr }) = stmt {
             expr.accept(self);
         } else {
             panic!("ERROR")
@@ -81,7 +84,7 @@ impl<'a> IVisitorStmt<'a, ()> for Interpreter {
     }
 
     fn visit_stmt_print(&mut self, stmt: &'a Stmt) {
-        if let Stmt::Print(expr) = stmt {
+        if let Stmt::Print(Print { expr }) = stmt {
             println!("{:?}", expr.accept(self));
         } else {
             panic!("ERROR")
@@ -89,39 +92,48 @@ impl<'a> IVisitorStmt<'a, ()> for Interpreter {
     }
 
     fn visit_var_decl(&mut self, stmt: &'a Stmt) {
-        if let Stmt::VarDecl(name, expr) = stmt {
-            let accepted_expr = expr.accept(self);
-            self.define(name.to_owned(), Box::new(accepted_expr));
-        } else {
-            panic!("ERROR")
+        match stmt {
+            Stmt::VarDecl(VarDecl { name, expr }) => {
+                let accepted_expr = expr.accept(self);
+                self.define(name.to_owned(), Box::new(accepted_expr));
+            }
+            _ => panic!("ERROR"),
         }
     }
 
     fn visit_block(&mut self, stmt: &'a Stmt) {
-        if let Stmt::Block(statements) = stmt {
-            self.execute_block(statements);
+        if let Stmt::Block(Block { stmts }) = stmt {
+            self.execute_block(stmts);
         } else {
             panic!("ERROR")
         }
     }
 
     fn visit_if(&mut self, stmt: &'a Stmt) {
-        if let Stmt::If(condition, true_branch, false_branch) = stmt {
+        if let Stmt::If(If {
+            condition,
+            branch_true,
+            branch_false,
+        }) = stmt
+        {
             let eval_condition = condition.accept(self);
-            if let Expr::Value(Type::Bool(b)) = eval_condition {
+            if let Expr::Value(Value { ty: Type::Bool(b) }) = eval_condition {
                 if b {
-                    true_branch.accept(self)
+                    branch_true.accept(self)
                 } else {
-                    false_branch.accept(self)
+                    branch_false.accept(self)
                 }
             }
         }
     }
 
     fn visit_while(&mut self, stmt: &'a Stmt) {
-        if let Stmt::While(condition, body) = stmt {
+        if let Stmt::While(While { condition, body }) = stmt {
             let mut accepted_cond = condition.accept(self);
-            while let Expr::Value(Type::Bool(true)) = accepted_cond {
+            while let Expr::Value(Value {
+                ty: Type::Bool(true),
+            }) = accepted_cond
+            {
                 accepted_cond = condition.accept(self);
                 body.accept(self)
             }
@@ -151,7 +163,7 @@ impl<'a> IVisitorExpr<'a, crate::ast::Expr> for Interpreter {
     }
 
     fn visit_unary(&mut self, expr: &'a Expr) -> crate::ast::Expr {
-        if let Expr::Unary { operator, right } = expr {
+        if let Expr::Unary(Unary { operator, right }) = expr {
             let accepted_right = right.accept(self);
             operator.clone().unary(accepted_right)
         } else {
@@ -160,11 +172,11 @@ impl<'a> IVisitorExpr<'a, crate::ast::Expr> for Interpreter {
     }
 
     fn visit_binary(&mut self, expr: &'a Expr) -> crate::ast::Expr {
-        if let Expr::Binary {
+        if let Expr::Binary(Binary {
             left,
             operator,
             right,
-        } = expr
+        }) = expr
         {
             let accepted_left = left.accept(self);
             let accepted_right = right.accept(self);
@@ -175,15 +187,15 @@ impl<'a> IVisitorExpr<'a, crate::ast::Expr> for Interpreter {
     }
 
     fn visit_grouping(&mut self, expr: &'a Expr) -> crate::ast::Expr {
-        if let Expr::Grouping(grp) = expr {
-            grp.accept(self)
+        if let Expr::Grouping(Grouping { group }) = expr {
+            group.accept(self)
         } else {
             panic!("ERROR")
         }
     }
 
     fn visit_var(&mut self, expr: &'a Expr) -> crate::ast::Expr {
-        if let Expr::Var(name) = expr {
+        if let Expr::Var(Var { var: name }) = expr {
             match self.get(name.lexeme.as_str()) {
                 Some(exp) => *exp,
                 None => panic!("Not found"),
@@ -194,32 +206,38 @@ impl<'a> IVisitorExpr<'a, crate::ast::Expr> for Interpreter {
     }
 
     fn visit_assign(&mut self, expr: &'a Expr) -> crate::ast::Expr {
-        if let Expr::Assign(name, value) = expr {
-            let accepted_value = value.accept(self);
-            let var_name: String = name.lexeme.to_owned();
-            self.assign(var_name, Box::new(accepted_value));
+        if let Expr::Assign(Assign { var, expr }) = expr {
+            let accepted_expr = expr.accept(self);
+            let var_name: String = var.lexeme.to_owned();
+            self.assign(var_name, Box::new(accepted_expr));
         }
         expr.clone()
     }
 
     fn visit_logical(&mut self, expr: &'a Expr) -> crate::ast::Expr {
-        if let Expr::Logical {
+        if let Expr::Logical(Logical {
             left,
             operator,
             right,
-        } = expr
+        }) = expr
         {
             let left_accepted = left.accept(self);
             let accepted = match operator {
                 Operator::Or => {
-                    if let Expr::Value(Type::Bool(false)) = left_accepted {
+                    if let Expr::Value(Value {
+                        ty: Type::Bool(false),
+                    }) = left_accepted
+                    {
                         left_accepted
                     } else {
                         right.accept(self)
                     }
                 }
                 _ => {
-                    if let Expr::Value(Type::Bool(false)) = left_accepted {
+                    if let Expr::Value(Value {
+                        ty: Type::Bool(false),
+                    }) = left_accepted
+                    {
                         left_accepted
                     } else {
                         right.accept(self)
@@ -233,13 +251,17 @@ impl<'a> IVisitorExpr<'a, crate::ast::Expr> for Interpreter {
         }
     }
 
+    fn visit_call(&mut self, expr: &'a Expr) -> crate::ast::Expr {
+        todo!()
+    }
+
     //fn visit_call(&mut self, expr: &'a Expr) -> crate::ast::Expr {
     //    if let Expr::Call { callee, paren, arguments } = expr {
     //        let callee_accepted = callee.accept(self);
     //        let args = arguments.iter().map(|arg| arg.accept(self)).collect();
     //
     //        expr
-    //        //Callable::call(self, args)
+    //Callable::call(self, args)
     //    } else {
     //        panic!("ERROR")
     //    }

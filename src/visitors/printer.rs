@@ -34,7 +34,7 @@ impl<'a> IVisitorStmt<'a, String> for AstPrinter {
 }
 
 impl<'a> IVisitorExpr<'a, String> for AstPrinter {
-    fn visit_value(self: &mut AstPrinter, expr: &'a Expr) -> String {
+    /*fn visit_value(self: &mut AstPrinter, expr: &'a Expr) -> String {
         match expr {
             Expr::Value(Type::Str(str)) => str.to_owned(),
             Expr::Value(Type::Bool(b)) => {
@@ -83,7 +83,7 @@ impl<'a> IVisitorExpr<'a, String> for AstPrinter {
         } else {
             panic!("ERROR")
         }
-    }
+    }*/
 
     fn visit_var(&mut self, expr: &'a Expr) -> String {
         todo!()
@@ -98,6 +98,22 @@ impl<'a> IVisitorExpr<'a, String> for AstPrinter {
     }
 
     fn visit_call(&mut self, expr: &'a Expr) -> String {
+        todo!()
+    }
+
+    fn visit_value(&mut self, expr: &'a Expr) -> String {
+        todo!()
+    }
+
+    fn visit_unary(&mut self, expr: &'a Expr) -> String {
+        todo!()
+    }
+
+    fn visit_binary(&mut self, expr: &'a Expr) -> String {
+        todo!()
+    }
+
+    fn visit_grouping(&mut self, expr: &'a Expr) -> String {
         todo!()
     }
 }
