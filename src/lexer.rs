@@ -58,18 +58,18 @@ pub enum TokenType {
     Eof,
 }
 
-#[derive(Debug, PartialEq, Clone)]
-pub enum Literal {
-    Number(f64),
-    Str(String),
-}
-
 #[derive(Debug, Clone, PartialEq)]
 pub struct Token {
     pub token_type: TokenType,
     pub lexeme: String,
-    pub literal: Option<Literal>,
+    pub literal: Option<TokenLiteral>,
     line: usize,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum TokenLiteral {
+    Str(String),
+    Number(f64),
 }
 
 impl Lexer {
@@ -207,7 +207,7 @@ impl Lexer {
 
         // Trim the surrounding quotes.
         let value = &self.source[self.start + 1..self.current - 1];
-        self.add_token(TokenType::String, Some(Literal::Str(value.to_owned())));
+        self.add_token(TokenType::String, Some(TokenLiteral::Str(value.to_owned())));
     }
 
     fn number(&mut self) {
@@ -228,10 +228,10 @@ impl Lexer {
         let value = &self.source[self.start..self.current];
         let value: f64 = value.parse().unwrap();
 
-        self.add_token(TokenType::Number, Some(Literal::Number(value)));
+        self.add_token(TokenType::Number, Some(TokenLiteral::Number(value)));
     }
 
-    fn add_token(&mut self, token_type: TokenType, literal: Option<Literal>) {
+    fn add_token(&mut self, token_type: TokenType, literal: Option<TokenLiteral>) {
         let text = &self.source[self.start..self.current];
         self.tokens.push(Token {
             token_type,

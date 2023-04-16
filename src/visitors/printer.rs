@@ -1,14 +1,14 @@
+use super::interpreter::Environment;
 use crate::ast::{Expr, IVisitorExpr, IVisitorStmt, Stmt};
-use crate::parser::Type;
 
 pub struct AstPrinter {}
 
 impl<'a> IVisitorStmt<'a, String> for AstPrinter {
-    fn visit_stmt_expr(&mut self, stmt: &'a Stmt) -> String {
+    fn visit_expr(&mut self, stmt: &'a Stmt) -> String {
         todo!()
     }
 
-    fn visit_stmt_print(&mut self, stmt: &'a Stmt) -> String {
+    fn visit_print(&mut self, stmt: &'a Stmt) -> String {
         todo!()
     }
 
@@ -20,7 +20,7 @@ impl<'a> IVisitorStmt<'a, String> for AstPrinter {
         todo!()
     }
 
-    fn execute_block(&mut self, stmts: &Vec<Stmt>) {
+    fn execute_block(&mut self, stmts: &Vec<Stmt>, env: Environment) {
         todo!()
     }
 
@@ -29,6 +29,10 @@ impl<'a> IVisitorStmt<'a, String> for AstPrinter {
     }
 
     fn visit_while(&mut self, stmt: &'a Stmt) -> String {
+        todo!()
+    }
+
+    fn visit_fun_decl(&mut self, stmt: &'a Stmt) -> String {
         todo!()
     }
 }
@@ -101,7 +105,7 @@ impl<'a> IVisitorExpr<'a, String> for AstPrinter {
         todo!()
     }
 
-    fn visit_value(&mut self, expr: &'a Expr) -> String {
+    fn visit_literal(&mut self, expr: &'a Expr) -> String {
         todo!()
     }
 

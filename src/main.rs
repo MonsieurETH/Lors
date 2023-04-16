@@ -1,5 +1,6 @@
 mod ast;
 mod lexer;
+mod operators;
 mod parser;
 mod visitors;
 
@@ -7,19 +8,15 @@ use lexer::Lexer;
 use parser::Parser;
 use std::{env, fs};
 use visitors::interpreter::Interpreter;
-//use visitors::printer::AstPrinter;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
     println!("{:?}", args);
     match args.len() {
-        //0 => run_promt(),
         2 => run_file(&args[1]),
         _ => panic!("Usage: loxc [script]"),
     }
 }
-
-//fn run_promt() { }
 
 fn run_file(path: &String) {
     let content = fs::read_to_string(path).expect("Error reading file");
@@ -49,7 +46,7 @@ fn run(source: &String) -> bool {
         println!("{:?}", value);
     }
 
-    println!("{:?}", visitor.env);
+    //println!("{:?}", visitor.env);
 
     false
 }

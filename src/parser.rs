@@ -36,35 +36,13 @@
 //logic_and      → equality ( "and" equality )* ;
 
 use crate::ast::{
-    Assign, Binary, Block, Expr, Expression, Grouping, If, Logical, Operator, Print, Stmt, Unary,
-    Value, Var, VarDecl, While,
+    Assign, Binary, Block, Call, Expr, Expression, FunDecl, Grouping, If, Literal, Logical, Print,
+    Stmt, Unary, Var, VarDecl, While,
 };
-use crate::lexer::{Literal, Token, TokenType};
+use crate::lexer::{Token, TokenLiteral, TokenType};
+use crate::operators::Operator;
 
 #[derive(Debug, Clone)]
-pub enum Type {
-    Bool(bool),
-    Number(f64),
-    Str(String),
-    Nil,
-}
-
-impl PartialEq for Type {
-    fn ne(&self, other: &Self) -> bool {
-        !self.eq(other)
-    }
-
-    fn eq(&self, other: &Self) -> bool {
-        match (self, other) {
-            (Self::Bool(_), Self::Bool(_)) => true,
-            (Self::Number(_), Self::Number(_)) => true,
-            (Self::Str(_), Self::Str(_)) => true,
-            _ => false,
-        }
-    }
-}
-
-#[derive(Debug)]
 pub struct Parser {
     tokens: Vec<Token>,
     current: usize,
@@ -92,6 +70,8 @@ impl Parser {
     fn declaration(&mut self) -> Stmt {
         if self.ismatch(&[TokenType::Var]) {
             self.var_decl()
+        } else if self.ismatch(&[TokenType::Fun]) {
+            self.fun_decl("function")
         } else {
             self.statement()
         }
@@ -106,7 +86,7 @@ impl Parser {
                 .lexeme
                 .to_owned();
         }
-        let mut value = Expr::Value(Value { ty: Type::Nil });
+        let mut value = Expr::Literal(Literal::Nil);
         if self.ismatch(&[TokenType::Equal]) {
             value = self.expression();
         }
@@ -119,6 +99,46 @@ impl Parser {
         Stmt::VarDecl(VarDecl {
             name,
             expr: Box::new(value),
+        })
+    }
+
+    fn fun_decl(&mut self, kind: &str) -> Stmt {
+        let name = self
+            .consume(TokenType::Identifier, &format!("Expect {} name.", kind))
+            .lexeme
+            .clone();
+
+        self.consume(
+            TokenType::LeftParen,
+            &format!("Expect '(' after {} name.", kind),
+        );
+
+        let mut parameters: Vec<Token> = vec![];
+        if !self.check(&TokenType::RightParen) {
+            loop {
+                if parameters.len() >= 255 {
+                    panic!("Cannot have more than 255 arguments.");
+                }
+                let token = self.consume(TokenType::Identifier, "Expect parameter name.");
+                parameters.push(token.to_owned());
+                if !self.ismatch(&[TokenType::Comma]) {
+                    break;
+                }
+            }
+        }
+
+        self.consume(TokenType::RightParen, "Expect ')' after parameters.");
+
+        self.consume(
+            TokenType::LeftBrace,
+            &format!("Expect '{{' before {} body.", kind),
+        );
+
+        let body: Vec<Stmt> = self.block();
+        Stmt::FunDecl(FunDecl {
+            name: name,
+            parameters,
+            body,
         })
     }
 
@@ -146,7 +166,7 @@ impl Parser {
         self.consume(TokenType::RightParen, "Expect ')' after if condition");
         let true_branch = self.statement();
         let mut false_branch = Stmt::Expression(Expression {
-            expr: Box::new(Expr::Value(Value { ty: Type::Nil })),
+            expr: Box::new(Expr::Literal(Literal::Nil)),
         }); // TODO too hacky!
         if self.ismatch(&[TokenType::Else]) {
             false_branch = self.statement();
@@ -201,9 +221,7 @@ impl Parser {
         let cond = if let Some(cond) = condition {
             cond
         } else {
-            Expr::Value(Value {
-                ty: Type::Bool(true),
-            })
+            Expr::Literal(Literal::Bool(true))
         };
         body = Stmt::While(While {
             condition: Box::new(cond),
@@ -272,7 +290,7 @@ impl Parser {
             let value: Expr = self.assigment();
 
             match expr {
-                Expr::Var(Var { var }) => Expr::Assign(Assign {
+                Expr::Var(var) => Expr::Assign(Assign {
                     var,
                     expr: Box::new(value),
                 }),
@@ -417,41 +435,31 @@ impl Parser {
                     panic!("Cannot have more than 255 arguments.");
                 }
                 arguments.push(self.expression());
-                if self.ismatch(&[TokenType::Comma]) {
+                if !self.ismatch(&[TokenType::Comma]) {
                     break;
                 }
             }
         }
 
         let paren = self.consume(TokenType::RightParen, "Expect ')' after arguments.");
-        callee
-        //Expr::Call {
-        //    callee: Box::new(callee),
-        //    paren: Box::new(paren.clone()), // TODO: Fix this
-        //    arguments,
-        //}
+        Expr::Call(Call {
+            callee: Box::new(callee),
+            paren: paren.clone(),
+            arguments,
+        })
     }
 
     fn primary(&mut self) -> Expr {
         if self.ismatch(&[TokenType::False]) {
-            Expr::Value(Value {
-                ty: Type::Bool(false),
-            })
+            Expr::Literal(Literal::Bool(false))
         } else if self.ismatch(&[TokenType::True]) {
-            Expr::Value(Value {
-                ty: Type::Bool(true),
-            })
+            Expr::Literal(Literal::Bool(true))
         } else if self.ismatch(&[TokenType::Nil]) {
-            Expr::Value(Value { ty: Type::Nil })
+            Expr::Literal(Literal::Nil)
         } else if self.ismatch(&[TokenType::String, TokenType::Number]) {
             let expr: Expr = match self.previous().literal.as_ref().unwrap() {
-                Literal::Number(n) => Expr::Value(Value {
-                    ty: Type::Number(*n),
-                }),
-                Literal::Str(s) => Expr::Value(Value {
-                    ty: Type::Str(s.to_owned()),
-                }),
-                _ => panic!("Invalid type"),
+                TokenLiteral::Number(n) => Expr::Literal(Literal::Number(*n)),
+                TokenLiteral::Str(s) => Expr::Literal(Literal::Str(s.to_owned())),
             };
             expr
         } else if self.ismatch(&[TokenType::LeftParen]) {
@@ -462,9 +470,7 @@ impl Parser {
                 group: Box::new(expr),
             })
         } else if self.ismatch(&[TokenType::Identifier]) {
-            Expr::Var(Var {
-                var: Box::new(self.previous().to_owned()),
-            })
+            Expr::Var(Var::Token(self.previous().to_owned()))
         } else {
             panic!("Invalid type")
         }
