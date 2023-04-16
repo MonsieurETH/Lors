@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use crate::lexer::Token;
 use crate::operators::Operator;
-use crate::visitors::interpreter::{self, Environment, Interpreter};
+use crate::visitors::interpreter::{Environment, Interpreter};
 
 macro_rules! define_ast {
     (pub enum $root:ident { $($n:ident: $t:ident $b:tt),* $(,)? }) => {
@@ -108,8 +108,6 @@ impl Stmt {
         }
     }
 }
-
-//#[derive(Debug, Clone)]
 
 impl Expr {
     pub fn accept<'a, T: IVisitorExpr<'a, U>, U>(&'a self, visitor: &mut T) -> U {

@@ -79,7 +79,7 @@ impl Parser {
     }
 
     fn var_decl(&mut self) -> Stmt {
-        let mut name: String = "".to_string();
+        let name: String;
         {
             name = self
                 .consume(TokenType::Identifier, "Expect variable name.")

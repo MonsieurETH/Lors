@@ -20,7 +20,7 @@ fn main() {
 
 fn run_file(path: &String) {
     let content = fs::read_to_string(path).expect("Error reading file");
-    let had_error = run(&content);
+    let _had_error = run(&content);
 }
 
 fn run(source: &String) -> bool {
