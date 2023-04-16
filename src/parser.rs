@@ -37,7 +37,7 @@
 
 use crate::ast::{
     Assign, Binary, Block, Call, Expr, Expression, FunDecl, Grouping, If, Literal, Logical, Print,
-    Stmt, Unary, Var, VarDecl, While,
+    Return, Stmt, Unary, Var, VarDecl, While,
 };
 use crate::lexer::{Token, TokenLiteral, TokenType};
 use crate::operators::Operator;
@@ -155,6 +155,8 @@ impl Parser {
             self.while_stmt()
         } else if self.ismatch(&[TokenType::For]) {
             self.for_stmt()
+        } else if self.ismatch(&[TokenType::Return]) {
+            self.return_stmt()
         } else {
             self.expr_stmt()
         }
@@ -176,6 +178,21 @@ impl Parser {
             condition: Box::new(condition),
             branch_true: Box::new(true_branch),
             branch_false: Box::new(false_branch),
+        })
+    }
+
+    fn return_stmt(&mut self) -> Stmt {
+        let keyword: Token = self.previous().clone();
+        let mut value: Option<Expr> = None;
+        if !self.check(&TokenType::Semicolon) {
+            value = Some(self.expression());
+        }
+
+        self.consume(TokenType::Semicolon, "Expect ';' after return value.");
+        let return_value = value.unwrap_or_else(|| Expr::Literal(Literal::Nil));
+        Stmt::Return(Return {
+            keyword,
+            value: return_value,
         })
     }
 

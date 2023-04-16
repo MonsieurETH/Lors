@@ -92,6 +92,10 @@ define_ast!(
             pub condition: Box<Expr>,
             pub body: Box<Stmt>
         },
+        Return: struct {
+            pub keyword: Token,
+            pub value: Expr,
+        },
     }
 );
 
@@ -105,6 +109,8 @@ impl Stmt {
             Stmt::If(_) => visitor.visit_if(&self),
             Stmt::While(_) => visitor.visit_while(&self),
             Stmt::FunDecl(_) => visitor.visit_fun_decl(&self),
+            Stmt::Return(_) => visitor.visit_return(&self),
+            _ => panic!("Invalid statement"),
         }
     }
 }
@@ -150,7 +156,7 @@ impl From<crate::ast::Token> for crate::ast::Literal {
 }
 
 impl Function {
-    pub fn execute_call(self, interpreter: &mut Interpreter, args: Vec<Expr>) {
+    pub fn execute_call(self, interpreter: &mut Interpreter, args: Vec<Expr>) -> Expr {
         let Function {
             name: _,
             parameters,
@@ -168,7 +174,11 @@ impl Function {
 
             //globals here
         }
-        interpreter.execute_block(&body, env)
+        let res: Option<Stmt> = interpreter.execute_block(&body, env);
+        match res {
+            Some(Stmt::Return(Return { keyword: _, value })) => value,
+            _ => Expr::Literal(Literal::Nil),
+        }
     }
 }
 
@@ -191,6 +201,7 @@ pub trait IVisitorStmt<'a, T> {
     fn visit_if(&mut self, stmt: &'a Stmt) -> T;
     fn visit_while(&mut self, stmt: &'a Stmt) -> T;
     fn visit_fun_decl(&mut self, stmt: &'a Stmt) -> T;
+    fn visit_return(&mut self, stmt: &'a Stmt) -> T;
 
-    fn execute_block(&mut self, stmts: &Vec<Stmt>, env: Environment);
+    fn execute_block(&mut self, stmts: &Vec<Stmt>, env: Environment) -> Option<Stmt>;
 }

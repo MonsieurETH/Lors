@@ -20,10 +20,6 @@ impl<'a> IVisitorStmt<'a, String> for AstPrinter {
         todo!()
     }
 
-    fn execute_block(&mut self, stmts: &Vec<Stmt>, env: Environment) {
-        todo!()
-    }
-
     fn visit_if(&mut self, stmt: &'a Stmt) -> String {
         todo!()
     }
@@ -33,6 +29,14 @@ impl<'a> IVisitorStmt<'a, String> for AstPrinter {
     }
 
     fn visit_fun_decl(&mut self, stmt: &'a Stmt) -> String {
+        todo!()
+    }
+
+    fn visit_return(&mut self, stmt: &'a Stmt) -> String {
+        todo!()
+    }
+
+    fn execute_block(&mut self, stmts: &Vec<Stmt>, env: Environment) -> Option<Stmt> {
         todo!()
     }
 }

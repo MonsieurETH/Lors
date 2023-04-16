@@ -3,7 +3,7 @@ use std::collections::HashMap;
 
 use crate::ast::{
     Assign, Binary, Block, Expr, Expression, FunDecl, Function, Grouping, IVisitorExpr,
-    IVisitorStmt, If, Literal, Logical, Print, Stmt, Unary, Var, VarDecl, While,
+    IVisitorStmt, If, Literal, Logical, Print, Return, Stmt, Unary, Var, VarDecl, While,
 };
 use crate::operators::Operator;
 
@@ -77,24 +77,26 @@ impl Interpreter {
     }
 }
 
-impl<'a> IVisitorStmt<'a, ()> for Interpreter {
-    fn visit_expr(&mut self, stmt: &'a Stmt) {
+impl<'a> IVisitorStmt<'a, Option<Stmt>> for Interpreter {
+    fn visit_expr(&mut self, stmt: &'a Stmt) -> Option<Stmt> {
         if let Stmt::Expression(Expression { expr }) = stmt {
             expr.accept(self);
         } else {
             panic!("ERROR")
         }
+        None
     }
 
-    fn visit_print(&mut self, stmt: &'a Stmt) {
+    fn visit_print(&mut self, stmt: &'a Stmt) -> Option<Stmt> {
         if let Stmt::Print(Print { expr }) = stmt {
             println!("{:?}", expr.accept(self));
         } else {
             panic!("ERROR")
         }
+        None
     }
 
-    fn visit_var_decl(&mut self, stmt: &'a Stmt) {
+    fn visit_var_decl(&mut self, stmt: &'a Stmt) -> Option<Stmt> {
         match stmt {
             Stmt::VarDecl(VarDecl { name, expr }) => {
                 let accepted_expr = expr.accept(self);
@@ -102,9 +104,10 @@ impl<'a> IVisitorStmt<'a, ()> for Interpreter {
             }
             _ => panic!("ERROR"),
         }
+        None
     }
 
-    fn visit_if(&mut self, stmt: &'a Stmt) {
+    fn visit_if(&mut self, stmt: &'a Stmt) -> Option<Stmt> {
         if let Stmt::If(If {
             condition,
             branch_true,
@@ -114,33 +117,36 @@ impl<'a> IVisitorStmt<'a, ()> for Interpreter {
             let eval_condition = condition.accept(self);
             if let Expr::Literal(Literal::Bool(b)) = eval_condition {
                 if b {
-                    branch_true.accept(self)
+                    _ = branch_true.accept(self)
                 } else {
-                    branch_false.accept(self)
+                    _ = branch_false.accept(self)
                 }
             }
         }
+        None
     }
 
-    fn visit_while(&mut self, stmt: &'a Stmt) {
+    fn visit_while(&mut self, stmt: &'a Stmt) -> Option<Stmt> {
         if let Stmt::While(While { condition, body }) = stmt {
             let mut accepted_cond = condition.accept(self);
             while let Expr::Literal(Literal::Bool(true)) = accepted_cond {
                 accepted_cond = condition.accept(self);
-                body.accept(self)
+                _ = body.accept(self)
             }
         }
+        None
     }
 
-    fn visit_block(&mut self, stmt: &'a Stmt) {
+    fn visit_block(&mut self, stmt: &'a Stmt) -> Option<Stmt> {
         if let Stmt::Block(Block { stmts }) = stmt {
             self.execute_block(stmts, self.env.clone());
+            None
         } else {
             panic!("ERROR")
         }
     }
 
-    fn execute_block(&mut self, stmts: &Vec<Stmt>, env: Environment) {
+    fn execute_block(&mut self, stmts: &Vec<Stmt>, env: Environment) -> Option<Stmt> {
         let symbol_table = HashMap::new();
         let mut new: Environment = Environment {
             enclosing: Some(Box::new(env)),
@@ -148,14 +154,23 @@ impl<'a> IVisitorStmt<'a, ()> for Interpreter {
         };
         _ = std::mem::swap(&mut self.env, &mut new);
 
+        let mut result = None;
         for stmt in stmts {
-            stmt.accept(self)
+            let accepted_stmt = stmt.accept(self);
+            match accepted_stmt {
+                Some(s) => {
+                    result = Some(s);
+                    break;
+                }
+                None => continue,
+            }
         }
 
         _ = std::mem::swap(self.env.enclosing.clone().unwrap().as_mut(), &mut self.env);
+        result
     }
 
-    fn visit_fun_decl(&mut self, stmt: &'a Stmt) {
+    fn visit_fun_decl(&mut self, stmt: &'a Stmt) -> Option<Stmt> {
         if let Stmt::FunDecl(FunDecl {
             name,
             parameters: _,
@@ -165,6 +180,23 @@ impl<'a> IVisitorStmt<'a, ()> for Interpreter {
             let call: Function = Function::from(stmt.clone());
             self.env
                 .define(name.clone(), Box::new(Expr::Function(call)));
+        }
+        None
+    }
+
+    fn visit_return(&mut self, stmt: &'a Stmt) -> Option<Stmt> {
+        if let Stmt::Return(Return { keyword, value }) = stmt {
+            let val = match value {
+                Expr::Literal(Literal::Nil) => Expr::Literal(Literal::Nil),
+                _ => value.accept(self),
+            };
+
+            Some(Stmt::Return(Return {
+                keyword: keyword.clone(),
+                value: val,
+            }))
+        } else {
+            panic!("ERROR")
         }
     }
 }
@@ -275,8 +307,7 @@ impl<'a> IVisitorExpr<'a, crate::ast::Expr> for Interpreter {
                         panic!("ERROR")
                     };
 
-                    fun.execute_call(self, args);
-                    return Expr::Literal(Literal::Nil);
+                    return fun.execute_call(self, args);
                 }
                 _ => panic!("ERROR"),
             }
