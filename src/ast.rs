@@ -226,7 +226,7 @@ pub trait IVisitorStmt<T> {
 
 #[derive(Debug)]
 pub struct Error {
-    msg: String,
+    pub msg: String,
 }
 
 impl Error {

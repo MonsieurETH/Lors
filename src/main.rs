@@ -5,6 +5,7 @@ mod parser;
 mod tools;
 mod visitors;
 
+use ast::Error;
 use lexer::Lexer;
 use parser::Parser;
 use std::{env, fs};
@@ -17,6 +18,7 @@ fn main() {
     //println!("{:?}", args);
     match args.len() {
         2 => run_file(&args[1]),
+        3 => run_test(&args[1]),
         _ => panic!("Usage: loxc [script]"),
     }
 }
@@ -24,6 +26,26 @@ fn main() {
 fn run_file(path: &String) {
     let content = fs::read_to_string(path).expect("Error reading file");
     let _had_error = run(&content);
+}
+
+fn run_test(path: &String) {
+    let source = fs::read_to_string(path).expect("Error reading file");
+
+    let mut lexer = Lexer::new(&source);
+    lexer.scan_tokens();
+
+    let mut parser: Parser = Parser::new(lexer.tokens);
+    let ast = parser.parse();
+
+    let mut visitor = Interpreter::new();
+    for stmt in ast {
+        let value = stmt.accept(&mut visitor);
+        match value {
+            Err(Error { msg }) => println!("{:?}", msg),
+            Ok(v) => println!("{:?}", v),
+            _ => continue,
+        }
+    }
 }
 
 fn run(source: &String) -> bool {
@@ -73,7 +95,14 @@ mod tests {
     #[test]
     fn it_works() {
         let tr = TestReader::new();
-        let (expected, result) = tr.run_test("./test/assignment/syntax.lox");
+        let (expected, result) = tr.run_test("./tests/assignment/syntax.lox");
+        assert_eq!(expected, result)
+    }
+
+    #[test]
+    fn it_works2() {
+        let tr = TestReader::new();
+        let (expected, result) = tr.run_test("./tests/operator/add_bool_string.lox");
         assert_eq!(expected, result)
     }
 }

@@ -87,8 +87,12 @@ impl Interpreter {
 impl IVisitorStmt<Result<Option<Stmt>, Error>> for Interpreter {
     fn visit_expr(&mut self, stmt: &Stmt) -> Result<Option<Stmt>, Error> {
         if let Stmt::Expression(Expression { expr }) = stmt {
-            expr.accept(self);
-            Ok(None)
+            match expr.accept(self) {
+                Ok(_) => Ok(None),
+                Err(e) => Err(e),
+            }
+
+            //Ok(None)
         } else {
             Err(Error::new("Invalid statement".to_string()))
         }
@@ -229,7 +233,7 @@ impl IVisitorExpr<Result<Expr, Error>> for Interpreter {
         {
             let accepted_left = left.accept(self).unwrap();
             let accepted_right = right.accept(self).unwrap();
-            Ok(operator.clone().binary(accepted_left, accepted_right))
+            operator.clone().binary(accepted_left, accepted_right)
         } else {
             Err(Error::new("Invalid expression".to_string()))
         }
@@ -312,17 +316,22 @@ impl IVisitorExpr<Result<Expr, Error>> for Interpreter {
             match callee_accepted {
                 Expr::Function(fun) => {
                     let Function {
-                        name: _,
+                        name,
                         parameters,
                         body: _,
                         context: _,
                     } = &fun;
 
                     if args.len() != parameters.len() {
-                        panic!("ERROR")
-                    };
-
-                    Ok(fun.execute_call(self, args))
+                        Err(Error::new(format!(
+                            "Invalid number of arguments (got {}, expected {}) in {} call",
+                            args.len(),
+                            parameters.len(),
+                            name
+                        )))
+                    } else {
+                        Ok(fun.execute_call(self, args))
+                    }
                 }
                 _ => Err(Error::new("Invalid call".to_string())),
             }
