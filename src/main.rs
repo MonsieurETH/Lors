@@ -2,12 +2,13 @@ mod ast;
 mod lexer;
 mod operators;
 mod parser;
+mod tools;
 mod visitors;
 
 use lexer::Lexer;
 use parser::Parser;
 use std::{env, fs};
-use visitors::interpreter::Interpreter;
+use tools::TestReader;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -40,11 +41,16 @@ fn run(source: &String) -> bool {
 
     //println!("{:?}", ast);
 
-    let mut visitor = Interpreter::new();
-    for stmt in ast {
-        let value = stmt.accept(&mut visitor);
-        println!("{:?}", value);
-    }
+    //let mut visitor = Interpreter::new();
+    //for stmt in ast {
+    //    let value = stmt.accept(&mut visitor);
+    //    println!("{:?}", value);
+    //}
+
+    let tr = TestReader::new();
+    let res = tr.run_test("return/after_else.lox");
+
+    //println!("ACA {:?}", res);
 
     //println!("{:?}", visitor.env);
 
