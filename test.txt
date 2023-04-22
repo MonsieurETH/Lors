@@ -1,7 +1,4 @@
-fun sayHi(first, last) {
-  var text = "Hi, " + first + " " + last + "!";
-  return text;
-}
-
-var res = sayHi("Dear", "Reader");
-print res;
+var a = "before";
+var c = a = "var";
+print a; // expect: var
+print c; // expect: var

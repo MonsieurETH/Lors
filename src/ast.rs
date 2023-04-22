@@ -1,8 +1,6 @@
-use std::collections::HashMap;
-
 use crate::lexer::Token;
 use crate::operators::Operator;
-use crate::visitors::interpreter::{Environment, Interpreter};
+use crate::visitors::interpreter::Interpreter;
 
 macro_rules! define_ast {
     (pub enum $root:ident { $($n:ident: $t:ident $b:tt),* $(,)? }) => {
@@ -58,7 +56,8 @@ define_ast!(
         Function: struct {
             pub name: String,
             pub parameters: Vec<Var>,
-            pub body: Vec<Stmt>
+            pub body: Vec<Stmt>,
+            pub context: usize,
         },
     }
 );
@@ -100,7 +99,7 @@ define_ast!(
 );
 
 impl Stmt {
-    pub fn accept<'a, T: IVisitorStmt<'a, U>, U>(&'a self, visitor: &mut T) -> U {
+    pub fn accept<T: IVisitorStmt<U>, U>(&self, visitor: &mut T) -> U {
         match self {
             Stmt::Expression(_) => visitor.visit_expr(&self),
             Stmt::Print(_) => visitor.visit_print(&self),
@@ -116,7 +115,7 @@ impl Stmt {
 }
 
 impl Expr {
-    pub fn accept<'a, T: IVisitorExpr<'a, U>, U>(&'a self, visitor: &mut T) -> U {
+    pub fn accept<T: IVisitorExpr<U>, U>(&self, visitor: &mut T) -> U {
         match self {
             Expr::Var(_) => visitor.visit_var(&self),
             Expr::Literal(_) => visitor.visit_literal(&self),
@@ -143,6 +142,7 @@ impl From<crate::ast::Stmt> for crate::ast::Function {
                     .map(|x| crate::ast::Var::Token(x))
                     .collect(),
                 body: fun_decl.body,
+                context: 0,
             },
             _ => panic!("Expected function"),
         }
@@ -161,47 +161,76 @@ impl Function {
             name: _,
             parameters,
             body,
+            context,
         } = self;
-        let symbol_table = HashMap::new();
-        let mut env: Environment = Environment {
-            enclosing: interpreter.env.enclosing.clone(),
-            symbol_table,
-        };
+
+        interpreter.new_environment();
 
         for (i, arg) in args.into_iter().enumerate() {
             let Var::Token(token) = parameters.get(i).unwrap();
-            env.define(token.lexeme.clone(), Box::new(arg));
-
-            //globals here
+            interpreter.define_symbol(token.lexeme.as_str(), arg);
         }
-        let res: Option<Stmt> = interpreter.execute_block(&body, env);
+        //globals here
+
+        let res: Option<Stmt> = interpreter.execute_block(&body, context).unwrap();
         match res {
             Some(Stmt::Return(Return { keyword: _, value })) => value,
             _ => Expr::Literal(Literal::Nil),
         }
     }
+
+    pub fn from_stmt(value: crate::ast::Stmt, context: usize) -> Function {
+        match value {
+            Stmt::FunDecl(fun_decl) => Function {
+                name: fun_decl.name,
+                parameters: fun_decl
+                    .parameters
+                    .into_iter()
+                    .map(|x| crate::ast::Var::Token(x))
+                    .collect(),
+                body: fun_decl.body,
+                context,
+            },
+            _ => panic!("Expected function"),
+        }
+    }
 }
 
-pub trait IVisitorExpr<'a, T> {
-    fn visit_var(&mut self, expr: &'a Expr) -> T;
-    fn visit_literal(&mut self, expr: &'a Expr) -> T;
-    fn visit_unary(&mut self, expr: &'a Expr) -> T;
-    fn visit_binary(&mut self, expr: &'a Expr) -> T;
-    fn visit_grouping(&mut self, expr: &'a Expr) -> T;
-    fn visit_assign(&mut self, expr: &'a Expr) -> T;
-    fn visit_logical(&mut self, expr: &'a Expr) -> T;
-    fn visit_call(&mut self, expr: &'a Expr) -> T;
+pub trait IVisitorExpr<T> {
+    fn visit_var(&mut self, expr: &Expr) -> T;
+    fn visit_literal(&mut self, expr: &Expr) -> T;
+    fn visit_unary(&mut self, expr: &Expr) -> T;
+    fn visit_binary(&mut self, expr: &Expr) -> T;
+    fn visit_grouping(&mut self, expr: &Expr) -> T;
+    fn visit_assign(&mut self, expr: &Expr) -> T;
+    fn visit_logical(&mut self, expr: &Expr) -> T;
+    fn visit_call(&mut self, expr: &Expr) -> T;
 }
 
-pub trait IVisitorStmt<'a, T> {
-    fn visit_expr(&mut self, stmt: &'a Stmt) -> T;
-    fn visit_print(&mut self, stmt: &'a Stmt) -> T;
-    fn visit_var_decl(&mut self, stmt: &'a Stmt) -> T;
-    fn visit_block(&mut self, stmt: &'a Stmt) -> T;
-    fn visit_if(&mut self, stmt: &'a Stmt) -> T;
-    fn visit_while(&mut self, stmt: &'a Stmt) -> T;
-    fn visit_fun_decl(&mut self, stmt: &'a Stmt) -> T;
-    fn visit_return(&mut self, stmt: &'a Stmt) -> T;
+pub trait IVisitorStmt<T> {
+    fn visit_expr(&mut self, stmt: &Stmt) -> T;
+    fn visit_print(&mut self, stmt: &Stmt) -> T;
+    fn visit_var_decl(&mut self, stmt: &Stmt) -> T;
+    fn visit_block(&mut self, stmt: &Stmt) -> T;
+    fn visit_if(&mut self, stmt: &Stmt) -> T;
+    fn visit_while(&mut self, stmt: &Stmt) -> T;
+    fn visit_fun_decl(&mut self, stmt: &Stmt) -> T;
+    fn visit_return(&mut self, stmt: &Stmt) -> T;
 
-    fn execute_block(&mut self, stmts: &Vec<Stmt>, env: Environment) -> Option<Stmt>;
+    fn execute_block(
+        &mut self,
+        stmts: &Vec<Stmt>,
+        context_number: usize,
+    ) -> Result<Option<Stmt>, Error>;
+}
+
+#[derive(Debug)]
+pub struct Error {
+    msg: String,
+}
+
+impl Error {
+    pub fn new(msg: String) -> Self {
+        Error { msg }
+    }
 }
