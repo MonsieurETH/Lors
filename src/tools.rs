@@ -86,7 +86,10 @@ impl TestReader {
             let value = stmt.accept(&mut visitor);
             match value {
                 None => continue,
-                Some(value) => results.push(value),
+                Some(value) => {
+                    if let Stmt::Expression(expr) = stmt {}
+                    results.push(value);
+                }
             }
         }
 

@@ -48,7 +48,7 @@ fn run(source: &String) -> bool {
     //}
 
     let tr = TestReader::new();
-    let res = tr.run_test("return/after_else.lox");
+    let res = tr.run_test("return/after_if.lox");
 
     //println!("ACA {:?}", res);
 
