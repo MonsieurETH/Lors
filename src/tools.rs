@@ -8,16 +8,13 @@ use std::{
 
 use crate::ast::{Expr, Literal};
 
-const TESTS_FOLDER: &str = "tests";
-
 pub struct TestReader {
     test_source: HashMap<String, String>,
 }
 
 impl TestReader {
-    pub fn new() -> Self {
-        let paths =
-            glob(&(TESTS_FOLDER.to_string() + "/*/*.lox")).expect("Failed to read glob pattern");
+    pub fn new(pattern: &str) -> Self {
+        let paths = glob(pattern).expect("Failed to read glob pattern");
 
         let mut sources: HashMap<String, String> = HashMap::new();
 
@@ -123,5 +120,9 @@ impl TestReader {
             }
         }
         results
+    }
+
+    pub fn iter(&self) -> Vec<&String> {
+        self.test_source.keys().collect()
     }
 }
