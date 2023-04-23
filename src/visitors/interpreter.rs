@@ -1,6 +1,4 @@
-use core::panic;
 use std::collections::HashMap;
-use std::fmt::format;
 
 use crate::ast::{
     Assign, Binary, Block, Error, Expr, Expression, FunDecl, Function, Grouping, IVisitorExpr,
@@ -82,6 +80,16 @@ impl Interpreter {
             }
         }
     }
+
+    pub fn check_symbol(&self, name: &str) -> bool {
+        for env in self.environments.iter().rev() {
+            let symbol = env.retrieve(name);
+            if symbol.is_some() {
+                true;
+            }
+        }
+        false
+    }
 }
 
 impl IVisitorStmt<Result<Option<Stmt>, Error>> for Interpreter {
@@ -152,7 +160,7 @@ impl IVisitorStmt<Result<Option<Stmt>, Error>> for Interpreter {
 
     fn visit_block(&mut self, stmt: &Stmt) -> Result<Option<Stmt>, Error> {
         if let Stmt::Block(Block { stmts }) = stmt {
-            self.execute_block(stmts, self.get_env_number());
+            self.execute_block(stmts, self.get_env_number())?;
             Ok(None)
         } else {
             Err(Error::new("Invalid statement".to_string()))
@@ -263,11 +271,15 @@ impl IVisitorExpr<Result<Expr, Error>> for Interpreter {
 
     fn visit_assign(&mut self, expr: &Expr) -> Result<Expr, Error> {
         if let Expr::Assign(Assign { var, expr }) = expr {
-            let accepted_expr = expr.accept(self).unwrap();
             let Var::Token(token) = var;
             let var_name: String = token.lexeme.to_owned();
-            self.assign_symbol(var_name.as_str(), accepted_expr.clone());
-            Ok(accepted_expr)
+            if self.check_symbol(&var_name) {
+                let accepted_expr = expr.accept(self)?;
+                self.assign_symbol(var_name.as_str(), accepted_expr.clone());
+                Ok(accepted_expr)
+            } else {
+                Err(Error::new(format!("Undefined variable '{}'.", var_name)))
+            }
         } else {
             Err(Error::new("Invalid expression".to_string()))
         }

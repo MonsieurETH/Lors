@@ -109,7 +109,7 @@ impl Stmt {
             Stmt::While(_) => visitor.visit_while(&self),
             Stmt::FunDecl(_) => visitor.visit_fun_decl(&self),
             Stmt::Return(_) => visitor.visit_return(&self),
-            _ => panic!("Invalid statement"),
+            //_ => panic!("Invalid statement"),
         }
     }
 }
