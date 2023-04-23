@@ -38,7 +38,7 @@ fn run_test(path: &String) {
 
     let mut visitor = Interpreter::new();
     for stmt in ast {
-        let value = stmt.accept(&mut visitor);
+        let value = stmt.unwrap().accept(&mut visitor);
         match value {
             Err(Error { msg }) => println!("{:?}", msg),
             Ok(Some(v)) => println!("{:?}", v),
@@ -56,10 +56,11 @@ fn run(source: &String) -> bool {
 
     let mut visitor = Interpreter::new();
     for stmt in ast {
-        let value = stmt.accept(&mut visitor).unwrap();
+        let value = stmt.unwrap().accept(&mut visitor);
         match value {
-            Some(v) => println!("{:?}", v),
-            None => continue,
+            Err(Error { msg }) => println!("{:?}", msg),
+            Ok(Some(v)) => println!("{:?}", v),
+            _ => continue,
         }
     }
 

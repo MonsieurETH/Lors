@@ -42,7 +42,7 @@ impl Operator {
         }
     }
 
-    pub fn to_string(&self) -> String {
+    /*pub fn to_string(&self) -> String {
         match self {
             Operator::Minus => String::from("-"),
             Operator::Plus => String::from("+"),
@@ -59,7 +59,7 @@ impl Operator {
             Operator::Or => String::from("or"),
             Operator::And => String::from("and"),
         }
-    }
+    }*/
 
     pub fn unary(self, right: Expr) -> Expr {
         match self {
@@ -99,7 +99,7 @@ impl Operator {
         }
     }
 
-    pub fn logical(self, left: Expr, right: Expr) -> Result<Expr, Error> {
+    /*pub fn logical(self, left: Expr, right: Expr) -> Result<Expr, Error> {
         match self {
             Operator::Or => self.logical_or(left, right),
             Operator::And => self.logical_and(left, right),
@@ -113,7 +113,7 @@ impl Operator {
 
     fn logical_and(self, left: Expr, right: Expr) -> Result<Expr, Error> {
         Ok(right)
-    }
+    }*/
 
     fn addition(self, left: Expr, right: Expr) -> Result<Expr, Error> {
         match (left, right) {
