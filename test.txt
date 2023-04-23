@@ -1,4 +1,2 @@
-if (true) print "good"; else print "bad"; // expect: good
-if (false) print "bad"; else print "good"; // expect: good
-
-if (false) nil; else { print "block"; } // expect: block
+var a = "a";
+!a = "value"; // Error at '=': Invalid assignment target.

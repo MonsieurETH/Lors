@@ -36,13 +36,21 @@ fn run_test(path: &String) {
     let mut parser: Parser = Parser::new(lexer.tokens);
     let ast = parser.parse();
 
-    let mut visitor = Interpreter::new();
-    for stmt in ast {
-        let value = stmt.unwrap().accept(&mut visitor);
-        match value {
-            Err(Error { msg }) => println!("{:?}", msg),
-            Ok(Some(v)) => println!("{:?}", v),
-            _ => continue,
+    let only_ok = ast.iter().filter(|result| result.is_ok());
+    if only_ok.count() == ast.len() {
+        let mut visitor = Interpreter::new();
+        for stmt in ast {
+            let value = stmt.unwrap().accept(&mut visitor);
+            match value {
+                Err(Error { msg }) => println!("{:?}", msg),
+                Ok(Some(v)) => println!("{:?}", v),
+                _ => continue,
+            }
+        }
+    } else {
+        let only_err = ast.iter().filter(|result| result.is_err());
+        for err in only_err {
+            println!("{:?}", err.clone().unwrap_err());
         }
     }
 }
@@ -53,14 +61,21 @@ fn run(source: &String) -> bool {
 
     let mut parser: Parser = Parser::new(lexer.tokens);
     let ast = parser.parse();
-
-    let mut visitor = Interpreter::new();
-    for stmt in ast {
-        let value = stmt.unwrap().accept(&mut visitor);
-        match value {
-            Err(Error { msg }) => println!("{:?}", msg),
-            Ok(Some(v)) => println!("{:?}", v),
-            _ => continue,
+    let only_ok = ast.iter().filter(|result| result.is_ok());
+    if only_ok.count() == ast.len() {
+        let mut visitor = Interpreter::new();
+        for stmt in ast {
+            let value = stmt.unwrap().accept(&mut visitor);
+            match value {
+                Err(Error { msg }) => println!("{:?}", msg),
+                Ok(Some(v)) => println!("{:?}", v),
+                _ => continue,
+            }
+        }
+    } else {
+        let only_err = ast.iter().filter(|result| result.is_err());
+        for err in only_err {
+            println!("{:?}", err.clone().unwrap_err());
         }
     }
 

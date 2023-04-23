@@ -61,7 +61,11 @@ impl Parser {
         let mut program = vec![];
         while !self.is_at_end() {
             let stmt = self.declaration();
-            program.push(stmt);
+            match stmt {
+                Ok(stmt) => program.push(Ok(stmt)),
+                Err(err) => return vec![Err(err)],
+            }
+            //program.push(stmt);
         }
 
         program
