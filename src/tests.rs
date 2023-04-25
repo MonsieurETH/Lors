@@ -14,7 +14,7 @@ fn test_assigment() {
 
 #[test]
 fn test_case() {
-    let tr = TestReader::new(&(TESTS_FOLDER.to_string() + "/assignment/undefined.lox"));
+    let tr = TestReader::new(&(TESTS_FOLDER.to_string() + "/bool/equality.lox"));
     for key in tr.iter() {
         println!("{}", key);
         let (expected, result) = tr.run_test(&(TESTS_FOLDER.to_string() + "/" + key));

@@ -38,10 +38,10 @@ impl Interpreter {
         }
     }
 
-    pub fn new_environment(&mut self) {
+    pub fn new_environment(&mut self) -> usize {
         let env = Environment::new();
         self.environments.push(env);
-        self.actual_env_number += 1;
+        self.environments.len() - 1
     }
 
     pub fn get_env_number(&self) -> usize {
@@ -52,13 +52,16 @@ impl Interpreter {
         self.actual_env_number = env_number;
     }
 
-    //pub fn destroy_environment(&mut self) {
-    //    self.environments.pop();
-    //    self.actual_env_number -= 1;
-    //}
+    pub fn destroy_environment(&mut self, pos: usize) {
+        self.environments.remove(pos);
+        //self.actual_env_number -= 1;
+    }
 
     pub fn define_symbol(&mut self, name: &str, value: Expr) {
-        self.environments.last_mut().unwrap().define(name, value);
+        self.environments
+            .get_mut(self.actual_env_number)
+            .unwrap()
+            .define(name, value);
     }
 
     pub fn get_symbol(&self, name: &str) -> Option<Expr> {
@@ -110,7 +113,8 @@ impl IVisitorStmt<Result<Option<Stmt>, Error>> for Interpreter {
     fn visit_print(&mut self, stmt: &Stmt) -> Result<Option<Stmt>, Error> {
         match stmt {
             Stmt::Print(Print { expr }) => {
-                println!("{:?}", expr.accept(self).unwrap());
+                let pv = expr.accept(self)?;
+                println!("{:?}", pv);
                 Ok(None)
             }
             _ => Err(Error::new("Invalid statement".to_string())),
@@ -160,7 +164,9 @@ impl IVisitorStmt<Result<Option<Stmt>, Error>> for Interpreter {
 
     fn visit_block(&mut self, stmt: &Stmt) -> Result<Option<Stmt>, Error> {
         if let Stmt::Block(Block { stmts }) = stmt {
-            self.execute_block(stmts, self.get_env_number())?;
+            let new_env = self.new_environment();
+            self.execute_block(stmts, new_env)?;
+            self.destroy_environment(new_env);
             Ok(None)
         } else {
             Err(Error::new("Invalid statement".to_string()))
