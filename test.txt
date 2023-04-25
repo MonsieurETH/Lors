@@ -1,21 +1,22 @@
-print true == true;    // expect: true
-print true == false;   // expect: false
-print false == true;   // expect: false
-print false == false;  // expect: true
+var f1;
+var f2;
+var f3;
 
-print true == 1;        // Operands must be of the same type
-print false == 0;       // Operands must be of the same type
-print true == "true";   // Operands must be of the same type
-print false == "false"; // Operands must be of the same type
-print false == "";      // Operands must be of the same type
+for (var i = 1; i < 4; i = i + 1) {
+  var j = i;
+  fun f() {
+    print i;
+    print j;
+  }
 
-print true != true;    // expect: false
-print true != false;   // expect: true
-print false != true;   // expect: true
-print false != false;  // expect: false
+  if (j == 1) f1 = f;
+  else if (j == 2) f2 = f;
+  else f3 = f;
+}
 
-print true != 1;        // Operands must be of the same type
-print false != 0;       // Operands must be of the same type
-print true != "true";   // Operands must be of the same type
-print false != "false"; // Operands must be of the same type
-print false != "";      // Operands must be of the same type
+f1(); // expect: 4
+      // expect: 1
+f2(); // expect: 4
+      // expect: 2
+f3(); // expect: 4
+      // expect: 3

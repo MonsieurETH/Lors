@@ -61,25 +61,25 @@ impl Operator {
         }
     }*/
 
-    pub fn unary(self, right: Expr) -> Expr {
+    pub fn unary(self, right: Expr) -> Result<Expr, Error> {
         match self {
             Operator::Minus => self.minus(right),
             Operator::Bang => self.negation(right),
-            _ => panic!("Unknown unary operation"),
+            _ => Err(Error::new("Unknown unary operation".to_string())),
         }
     }
 
-    fn minus(self, expr: Expr) -> Expr {
+    fn minus(self, expr: Expr) -> Result<Expr, Error> {
         match expr {
-            Expr::Literal(Literal::Number(n)) => Expr::Literal(Literal::Number(n)),
-            _ => panic!("Operand must be a number"),
+            Expr::Literal(Literal::Number(n)) => Ok(Expr::Literal(Literal::Number(-n))),
+            _ => Err(Error::new("Operand must be a number".to_string())),
         }
     }
 
-    fn negation(self, expr: Expr) -> Expr {
+    fn negation(self, expr: Expr) -> Result<Expr, Error> {
         match expr {
-            Expr::Literal(Literal::Bool(b)) => Expr::Literal(Literal::Bool(b)),
-            _ => panic!("Operand must be a bool"),
+            Expr::Literal(Literal::Bool(b)) => Ok(Expr::Literal(Literal::Bool(!b))),
+            _ => Err(Error::new("Operand must be a bool".to_string())),
         }
     }
 

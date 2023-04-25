@@ -166,7 +166,7 @@ impl IVisitorStmt<Result<Option<Stmt>, Error>> for Interpreter {
         if let Stmt::Block(Block { stmts }) = stmt {
             let new_env = self.new_environment();
             self.execute_block(stmts, new_env)?;
-            self.destroy_environment(new_env);
+            //self.destroy_environment(new_env);
             Ok(None)
         } else {
             Err(Error::new("Invalid statement".to_string()))
@@ -232,7 +232,7 @@ impl IVisitorExpr<Result<Expr, Error>> for Interpreter {
     fn visit_unary(&mut self, expr: &Expr) -> Result<Expr, Error> {
         if let Expr::Unary(Unary { operator, right }) = expr {
             let accepted_right = right.accept(self).unwrap();
-            Ok(operator.clone().unary(accepted_right))
+            operator.clone().unary(accepted_right)
         } else {
             Err(Error::new("Invalid expression".to_string()))
         }
