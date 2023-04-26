@@ -84,11 +84,12 @@ impl Interpreter {
         }
     }
 
-    pub fn check_symbol(&self, name: &str) -> bool {
-        for env in self.environments.iter().rev() {
+    pub fn check_symbol(&self, name: &str, env: usize) -> bool {
+        let rev = self.environments.iter().rev();
+        for env in rev {
             let symbol = env.retrieve(name);
             if symbol.is_some() {
-                true;
+                return true;
             }
         }
         false
@@ -279,7 +280,7 @@ impl IVisitorExpr<Result<Expr, Error>> for Interpreter {
         if let Expr::Assign(Assign { var, expr }) = expr {
             let Var::Token(token) = var;
             let var_name: String = token.lexeme.to_owned();
-            if self.check_symbol(&var_name) {
+            if self.check_symbol(&var_name, self.actual_env_number) {
                 let accepted_expr = expr.accept(self)?;
                 self.assign_symbol(var_name.as_str(), accepted_expr.clone());
                 Ok(accepted_expr)
