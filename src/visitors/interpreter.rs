@@ -7,78 +7,84 @@ use crate::ast::{
 };
 use crate::operators::Operator;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct Environment {
-    pub enclosing: Option<Box<Environment>>,
-    pub symbol_table: HashMap<String, Box<Expr>>,
-}
-
-impl Clone for Environment {
-    fn clone(&self) -> Self {
-        Self {
-            enclosing: self.enclosing.clone(),
-            symbol_table: self.symbol_table.clone(),
-        }
-    }
+    symbol_table: HashMap<String, Expr>,
 }
 
 impl Environment {
-    pub fn get(&self, symbol: &str) -> Option<Box<Expr>> {
-        while let Some(expr) = self.symbol_table.get(symbol) {
-            return Some(expr.clone());
+    pub fn new() -> Self {
+        Environment {
+            symbol_table: HashMap::new(),
         }
-        let mut current_env = self;
-        while let Some(enclosing) = current_env.enclosing.as_ref() {
-            current_env = enclosing;
-            if let Some(expr) = current_env.symbol_table.get(symbol) {
-                return Some(expr.clone());
+    }
+
+    pub fn define(&mut self, name: &str, value: Expr) {
+        self.symbol_table.insert(name.to_string(), value);
+    }
+
+    pub fn retrieve(&self, name: &str) -> Option<Expr> {
+        self.symbol_table.get(name).cloned()
+    }
+}
+pub struct Interpreter {
+    environments: Vec<Environment>,
+    actual_env_number: usize,
+}
+impl Interpreter {
+    pub fn new() -> Self {
+        Interpreter {
+            environments: vec![Environment::new()],
+            actual_env_number: 0,
+        }
+    }
+
+    pub fn new_environment(&mut self) {
+        let env = Environment::new();
+        self.environments.push(env);
+        self.actual_env_number += 1;
+    }
+
+    pub fn get_env_number(&self) -> usize {
+        self.actual_env_number
+    }
+
+    pub fn set_env_number(&mut self, env_number: usize) {
+        self.actual_env_number = env_number;
+    }
+
+    //pub fn destroy_environment(&mut self) {
+    //    self.environments.pop();
+    //    self.actual_env_number -= 1;
+    //}
+
+    pub fn define_symbol(&mut self, name: &str, value: Expr) {
+        self.environments.last_mut().unwrap().define(name, value);
+    }
+
+    pub fn get_symbol(&self, name: &str) -> Option<Expr> {
+        for env in self.environments.iter().rev() {
+            let symbol = env.retrieve(name);
+            if symbol.is_some() {
+                return symbol;
             }
         }
         None
     }
 
-    pub fn define(&mut self, symbol: String, expr: Box<Expr>) {
-        self.symbol_table.insert(symbol, expr);
-    }
-
-    // This function is pretty awful, and separating 'define' & 'assign'
-    // looks like a bad idea in the long term. (check & rewrite)"
-    pub fn assign(&mut self, symbol: String, expr: Box<Expr>) {
-        let mut current_env = self;
-        let str = symbol.as_str();
-        loop {
-            if current_env.symbol_table.contains_key(str) {
-                current_env
-                    .symbol_table
-                    .insert(symbol.clone(), expr.clone());
-                return;
-            }
-
-            if let Some(enclosing) = &mut current_env.enclosing {
-                current_env = enclosing.as_mut();
-            } else {
+    pub fn assign_symbol(&mut self, name: &str, value: Expr) {
+        for env in self.environments.iter_mut().rev() {
+            let symbol = env.retrieve(name);
+            if symbol.is_some() {
+                env.define(name, value);
                 break;
             }
         }
     }
 }
-pub struct Interpreter {
-    pub env: Environment,
-}
 
-impl Interpreter {
-    pub fn new() -> Interpreter {
-        let symbol_table = HashMap::new();
-        let env: Environment = Environment {
-            enclosing: None,
-            symbol_table,
-        };
-        Interpreter { env }
-    }
-}
-
-impl<'a> IVisitorStmt<'a, Option<Stmt>> for Interpreter {
-    fn visit_expr(&mut self, stmt: &'a Stmt) -> Option<Stmt> {
+impl IVisitorStmt<Option<Stmt>> for Interpreter {
+    fn visit_expr(&mut self, stmt: &Stmt) -> Option<Stmt> {
         if let Stmt::Expression(Expression { expr }) = stmt {
             expr.accept(self);
         } else {
@@ -87,7 +93,7 @@ impl<'a> IVisitorStmt<'a, Option<Stmt>> for Interpreter {
         None
     }
 
-    fn visit_print(&mut self, stmt: &'a Stmt) -> Option<Stmt> {
+    fn visit_print(&mut self, stmt: &Stmt) -> Option<Stmt> {
         if let Stmt::Print(Print { expr }) = stmt {
             println!("{:?}", expr.accept(self));
         } else {
@@ -96,18 +102,18 @@ impl<'a> IVisitorStmt<'a, Option<Stmt>> for Interpreter {
         None
     }
 
-    fn visit_var_decl(&mut self, stmt: &'a Stmt) -> Option<Stmt> {
+    fn visit_var_decl(&mut self, stmt: &Stmt) -> Option<Stmt> {
         match stmt {
             Stmt::VarDecl(VarDecl { name, expr }) => {
                 let accepted_expr = expr.accept(self);
-                self.env.define(name.to_owned(), Box::new(accepted_expr));
+                self.define_symbol(name.as_str(), accepted_expr);
             }
             _ => panic!("ERROR"),
         }
         None
     }
 
-    fn visit_if(&mut self, stmt: &'a Stmt) -> Option<Stmt> {
+    fn visit_if(&mut self, stmt: &Stmt) -> Option<Stmt> {
         if let Stmt::If(If {
             condition,
             branch_true,
@@ -126,7 +132,7 @@ impl<'a> IVisitorStmt<'a, Option<Stmt>> for Interpreter {
         None
     }
 
-    fn visit_while(&mut self, stmt: &'a Stmt) -> Option<Stmt> {
+    fn visit_while(&mut self, stmt: &Stmt) -> Option<Stmt> {
         if let Stmt::While(While { condition, body }) = stmt {
             let mut accepted_cond = condition.accept(self);
             while let Expr::Literal(Literal::Bool(true)) = accepted_cond {
@@ -137,22 +143,20 @@ impl<'a> IVisitorStmt<'a, Option<Stmt>> for Interpreter {
         None
     }
 
-    fn visit_block(&mut self, stmt: &'a Stmt) -> Option<Stmt> {
+    fn visit_block(&mut self, stmt: &Stmt) -> Option<Stmt> {
         if let Stmt::Block(Block { stmts }) = stmt {
-            self.execute_block(stmts, self.env.clone());
+            self.execute_block(stmts, self.get_env_number());
             None
         } else {
             panic!("ERROR")
         }
     }
 
-    fn execute_block(&mut self, stmts: &Vec<Stmt>, env: Environment) -> Option<Stmt> {
-        let symbol_table = HashMap::new();
-        let mut new: Environment = Environment {
-            enclosing: Some(Box::new(env)),
-            symbol_table,
-        };
-        _ = std::mem::swap(&mut self.env, &mut new);
+    fn execute_block(&mut self, stmts: &Vec<Stmt>, context: usize) -> Option<Stmt> {
+        //let mut new = self.new_environment();
+        //let old = context.clone();
+        let actual_context = self.get_env_number();
+        self.set_env_number(context);
 
         let mut result = None;
         for stmt in stmts {
@@ -166,25 +170,25 @@ impl<'a> IVisitorStmt<'a, Option<Stmt>> for Interpreter {
             }
         }
 
-        _ = std::mem::swap(self.env.enclosing.clone().unwrap().as_mut(), &mut self.env);
+        self.set_env_number(actual_context);
+
         result
     }
 
-    fn visit_fun_decl(&mut self, stmt: &'a Stmt) -> Option<Stmt> {
+    fn visit_fun_decl(&mut self, stmt: &Stmt) -> Option<Stmt> {
         if let Stmt::FunDecl(FunDecl {
             name,
             parameters: _,
             body: _,
         }) = stmt
         {
-            let call: Function = Function::from(stmt.clone());
-            self.env
-                .define(name.clone(), Box::new(Expr::Function(call)));
+            let call: Function = Function::from_stmt(stmt.clone(), self.get_env_number());
+            self.define_symbol(name.as_str(), Expr::Function(call));
         }
         None
     }
 
-    fn visit_return(&mut self, stmt: &'a Stmt) -> Option<Stmt> {
+    fn visit_return(&mut self, stmt: &Stmt) -> Option<Stmt> {
         if let Stmt::Return(Return { keyword, value }) = stmt {
             let val = match value {
                 Expr::Literal(Literal::Nil) => Expr::Literal(Literal::Nil),
@@ -201,12 +205,12 @@ impl<'a> IVisitorStmt<'a, Option<Stmt>> for Interpreter {
     }
 }
 
-impl<'a> IVisitorExpr<'a, crate::ast::Expr> for Interpreter {
-    fn visit_literal(&mut self, expr: &'a Expr) -> crate::ast::Expr {
+impl IVisitorExpr<crate::ast::Expr> for Interpreter {
+    fn visit_literal(&mut self, expr: &Expr) -> crate::ast::Expr {
         expr.clone()
     }
 
-    fn visit_unary(&mut self, expr: &'a Expr) -> crate::ast::Expr {
+    fn visit_unary(&mut self, expr: &Expr) -> crate::ast::Expr {
         if let Expr::Unary(Unary { operator, right }) = expr {
             let accepted_right = right.accept(self);
             operator.clone().unary(accepted_right)
@@ -215,7 +219,7 @@ impl<'a> IVisitorExpr<'a, crate::ast::Expr> for Interpreter {
         }
     }
 
-    fn visit_binary(&mut self, expr: &'a Expr) -> crate::ast::Expr {
+    fn visit_binary(&mut self, expr: &Expr) -> crate::ast::Expr {
         if let Expr::Binary(Binary {
             left,
             operator,
@@ -230,7 +234,7 @@ impl<'a> IVisitorExpr<'a, crate::ast::Expr> for Interpreter {
         }
     }
 
-    fn visit_grouping(&mut self, expr: &'a Expr) -> crate::ast::Expr {
+    fn visit_grouping(&mut self, expr: &Expr) -> crate::ast::Expr {
         if let Expr::Grouping(Grouping { group }) = expr {
             group.accept(self)
         } else {
@@ -238,10 +242,10 @@ impl<'a> IVisitorExpr<'a, crate::ast::Expr> for Interpreter {
         }
     }
 
-    fn visit_var(&mut self, expr: &'a Expr) -> crate::ast::Expr {
+    fn visit_var(&mut self, expr: &Expr) -> crate::ast::Expr {
         if let Expr::Var(Var::Token(name)) = expr {
-            match self.env.get(name.lexeme.as_str()) {
-                Some(exp) => *exp,
+            match self.get_symbol(name.lexeme.as_str()) {
+                Some(exp) => exp,
                 None => panic!("Not found"),
             }
         } else {
@@ -249,17 +253,17 @@ impl<'a> IVisitorExpr<'a, crate::ast::Expr> for Interpreter {
         }
     }
 
-    fn visit_assign(&mut self, expr: &'a Expr) -> crate::ast::Expr {
+    fn visit_assign(&mut self, expr: &Expr) -> crate::ast::Expr {
         if let Expr::Assign(Assign { var, expr }) = expr {
             let accepted_expr = expr.accept(self);
             let Var::Token(token) = var;
             let var_name: String = token.lexeme.to_owned();
-            self.env.assign(var_name, Box::new(accepted_expr));
+            self.assign_symbol(var_name.as_str(), accepted_expr);
         }
         expr.clone()
     }
 
-    fn visit_logical(&mut self, expr: &'a Expr) -> crate::ast::Expr {
+    fn visit_logical(&mut self, expr: &Expr) -> crate::ast::Expr {
         if let Expr::Logical(Logical {
             left,
             operator,
@@ -290,7 +294,7 @@ impl<'a> IVisitorExpr<'a, crate::ast::Expr> for Interpreter {
         }
     }
 
-    fn visit_call(self: &mut Interpreter, expr: &'a Expr) -> crate::ast::Expr {
+    fn visit_call(self: &mut Interpreter, expr: &Expr) -> crate::ast::Expr {
         if let Expr::Call(call) = expr {
             let callee_accepted = call.callee.accept(self);
             let args: Vec<Expr> = call.arguments.iter().map(|arg| arg.accept(self)).collect();
@@ -301,6 +305,7 @@ impl<'a> IVisitorExpr<'a, crate::ast::Expr> for Interpreter {
                         name: _,
                         parameters,
                         body: _,
+                        context: _,
                     } = &fun;
 
                     if args.len() != parameters.len() {

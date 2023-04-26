@@ -7,7 +7,7 @@ mod visitors;
 use lexer::Lexer;
 use parser::Parser;
 use std::{env, fs};
-use visitors::interpreter::Interpreter;
+use visitors::interpreter::{Environment, Interpreter};
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -43,7 +43,10 @@ fn run(source: &String) -> bool {
     let mut visitor = Interpreter::new();
     for stmt in ast {
         let value = stmt.accept(&mut visitor);
-        println!("{:?}", value);
+        match value {
+            Some(v) => println!("{:?}", v),
+            None => continue,
+        }
     }
 
     //println!("{:?}", visitor.env);
