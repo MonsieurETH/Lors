@@ -109,7 +109,7 @@ impl Stmt {
             Stmt::While(_) => visitor.visit_while(&self),
             Stmt::FunDecl(_) => visitor.visit_fun_decl(&self),
             Stmt::Return(_) => visitor.visit_return(&self),
-            _ => panic!("Invalid statement"),
+            //_ => panic!("Invalid statement"),
         }
     }
 }
@@ -172,7 +172,7 @@ impl Function {
         }
         //globals here
 
-        let res: Option<Stmt> = interpreter.execute_block(&body, context);
+        let res: Option<Stmt> = interpreter.execute_block(&body, context).unwrap();
         match res {
             Some(Stmt::Return(Return { keyword: _, value })) => value,
             _ => Expr::Literal(Literal::Nil),
@@ -217,5 +217,20 @@ pub trait IVisitorStmt<T> {
     fn visit_fun_decl(&mut self, stmt: &Stmt) -> T;
     fn visit_return(&mut self, stmt: &Stmt) -> T;
 
-    fn execute_block(&mut self, stmts: &Vec<Stmt>, context_number: usize) -> Option<Stmt>;
+    fn execute_block(
+        &mut self,
+        stmts: &Vec<Stmt>,
+        context_number: usize,
+    ) -> Result<Option<Stmt>, Error>;
+}
+
+#[derive(Debug)]
+pub struct Error {
+    pub msg: String,
+}
+
+impl Error {
+    pub fn new(msg: String) -> Self {
+        Error { msg }
+    }
 }

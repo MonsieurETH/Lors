@@ -1,5 +1,5 @@
 use crate::{
-    ast::{Expr, Literal},
+    ast::{Error, Expr, Literal},
     lexer::{Token, TokenType},
 };
 
@@ -42,7 +42,7 @@ impl Operator {
         }
     }
 
-    pub fn to_string(&self) -> String {
+    /*pub fn to_string(&self) -> String {
         match self {
             Operator::Minus => String::from("-"),
             Operator::Plus => String::from("+"),
@@ -59,31 +59,31 @@ impl Operator {
             Operator::Or => String::from("or"),
             Operator::And => String::from("and"),
         }
-    }
+    }*/
 
-    pub fn unary(self, right: Expr) -> Expr {
+    pub fn unary(self, right: Expr) -> Result<Expr, Error> {
         match self {
             Operator::Minus => self.minus(right),
             Operator::Bang => self.negation(right),
-            _ => panic!("Unknown unary operation"),
+            _ => Err(Error::new("Unknown unary operation".to_string())),
         }
     }
 
-    fn minus(self, expr: Expr) -> Expr {
+    fn minus(self, expr: Expr) -> Result<Expr, Error> {
         match expr {
-            Expr::Literal(Literal::Number(n)) => Expr::Literal(Literal::Number(n)),
-            _ => panic!("Operand must be a number"),
+            Expr::Literal(Literal::Number(n)) => Ok(Expr::Literal(Literal::Number(-n))),
+            _ => Err(Error::new("Operand must be a number".to_string())),
         }
     }
 
-    fn negation(self, expr: Expr) -> Expr {
+    fn negation(self, expr: Expr) -> Result<Expr, Error> {
         match expr {
-            Expr::Literal(Literal::Bool(b)) => Expr::Literal(Literal::Bool(b)),
-            _ => panic!("Operand must be a bool"),
+            Expr::Literal(Literal::Bool(b)) => Ok(Expr::Literal(Literal::Bool(!b))),
+            _ => Err(Error::new("Operand must be a bool".to_string())),
         }
     }
 
-    pub fn binary(self, left: Expr, right: Expr) -> Expr {
+    pub fn binary(self, left: Expr, right: Expr) -> Result<Expr, Error> {
         match self {
             Operator::Plus => self.addition(left, right),
             Operator::Minus => self.subtraction(left, right),
@@ -99,124 +99,126 @@ impl Operator {
         }
     }
 
-    pub fn logical(self, left: Expr, right: Expr) -> Expr {
+    /*pub fn logical(self, left: Expr, right: Expr) -> Result<Expr, Error> {
         match self {
             Operator::Or => self.logical_or(left, right),
             Operator::And => self.logical_and(left, right),
-            _ => panic!("Unknown logical operator"),
+            _ => Err(Error::new("Unknown logical operator".to_string())),
         }
     }
 
-    fn logical_or(self, left: Expr, right: Expr) -> Expr {
-        left
+    fn logical_or(self, left: Expr, right: Expr) -> Result<Expr, Error> {
+        Ok(left)
     }
 
-    fn logical_and(self, left: Expr, right: Expr) -> Expr {
-        right
-    }
+    fn logical_and(self, left: Expr, right: Expr) -> Result<Expr, Error> {
+        Ok(right)
+    }*/
 
-    fn addition(self, left: Expr, right: Expr) -> Expr {
+    fn addition(self, left: Expr, right: Expr) -> Result<Expr, Error> {
         match (left, right) {
             (Expr::Literal(Literal::Number(l)), Expr::Literal(Literal::Number(r))) => {
-                Expr::Literal(Literal::Number(l + r))
+                Ok(Expr::Literal(Literal::Number(l + r)))
             }
             (Expr::Literal(Literal::Str(l)), Expr::Literal(Literal::Str(r))) => {
-                Expr::Literal(Literal::Str(l + &r))
+                Ok(Expr::Literal(Literal::Str(l + &r)))
             }
-            _ => panic!("Operands must be two numbers or two strings"),
+            _ => Err(Error::new(
+                "Operands must be two numbers or two strings.".to_string(),
+            )),
         }
     }
 
-    fn subtraction(self, left: Expr, right: Expr) -> Expr {
+    fn subtraction(self, left: Expr, right: Expr) -> Result<Expr, Error> {
         match (left, right) {
             (Expr::Literal(Literal::Number(l)), Expr::Literal(Literal::Number(r))) => {
-                Expr::Literal(Literal::Number(l - r))
+                Ok(Expr::Literal(Literal::Number(l - r)))
             }
-            _ => panic!("Operands must be numbers"),
+            _ => Err(Error::new("Operands must be numbers.".to_string())),
         }
     }
 
-    fn multiplication(self, left: Expr, right: Expr) -> Expr {
+    fn multiplication(self, left: Expr, right: Expr) -> Result<Expr, Error> {
         match (left, right) {
             (Expr::Literal(Literal::Number(l)), Expr::Literal(Literal::Number(r))) => {
-                Expr::Literal(Literal::Number(l * r))
+                Ok(Expr::Literal(Literal::Number(l * r)))
             }
-            _ => panic!("Operands must be numbers"),
+            _ => Err(Error::new("Operands must be numbers.".to_string())),
         }
     }
 
-    fn division(self, left: Expr, right: Expr) -> Expr {
+    fn division(self, left: Expr, right: Expr) -> Result<Expr, Error> {
         match (left, right) {
             (Expr::Literal(Literal::Number(l)), Expr::Literal(Literal::Number(r))) => {
-                Expr::Literal(Literal::Number(l / r))
+                Ok(Expr::Literal(Literal::Number(l / r)))
             }
-            _ => panic!("Operands must be numbers"),
+            _ => Err(Error::new("Operands must be numbers.".to_string())),
         }
     }
 
-    fn equal_equal(self, left: Expr, right: Expr) -> Expr {
+    fn equal_equal(self, left: Expr, right: Expr) -> Result<Expr, Error> {
         match (left, right) {
             (Expr::Literal(Literal::Bool(l)), Expr::Literal(Literal::Bool(r))) => {
-                Expr::Literal(Literal::Bool(l == r))
+                Ok(Expr::Literal(Literal::Bool(l == r)))
             }
             (Expr::Literal(Literal::Number(l)), Expr::Literal(Literal::Number(r))) => {
-                Expr::Literal(Literal::Bool(l == r))
+                Ok(Expr::Literal(Literal::Bool(l == r)))
             }
             (Expr::Literal(Literal::Str(l)), Expr::Literal(Literal::Str(r))) => {
-                Expr::Literal(Literal::Bool(l == r))
+                Ok(Expr::Literal(Literal::Bool(l == r)))
             }
-            _ => panic!("Operands must be of the same type"),
+            _ => Err(Error::new("Operands must be of the same type".to_string())),
         }
     }
 
-    fn bang_equal(self, left: Expr, right: Expr) -> Expr {
+    fn bang_equal(self, left: Expr, right: Expr) -> Result<Expr, Error> {
         match (left, right) {
             (Expr::Literal(Literal::Bool(l)), Expr::Literal(Literal::Bool(r))) => {
-                Expr::Literal(Literal::Bool(l != r))
+                Ok(Expr::Literal(Literal::Bool(l != r)))
             }
             (Expr::Literal(Literal::Number(l)), Expr::Literal(Literal::Number(r))) => {
-                Expr::Literal(Literal::Bool(l != r))
+                Ok(Expr::Literal(Literal::Bool(l != r)))
             }
             (Expr::Literal(Literal::Str(l)), Expr::Literal(Literal::Str(r))) => {
-                Expr::Literal(Literal::Bool(l != r))
+                Ok(Expr::Literal(Literal::Bool(l != r)))
             }
-            _ => panic!("Operands must be of the same type"),
+            _ => Err(Error::new("Operands must be of the same type".to_string())),
         }
     }
 
-    fn greater_than(self, left: Expr, right: Expr) -> Expr {
+    fn greater_than(self, left: Expr, right: Expr) -> Result<Expr, Error> {
         match (left, right) {
             (Expr::Literal(Literal::Number(l)), Expr::Literal(Literal::Number(r))) => {
-                Expr::Literal(Literal::Bool(l > r))
+                Ok(Expr::Literal(Literal::Bool(l > r)))
             }
-            _ => panic!("Operands must be numbers"),
+            _ => Err(Error::new("Operands must be numbers".to_string())),
         }
     }
 
-    fn greater_than_or_equal(self, left: Expr, right: Expr) -> Expr {
+    fn greater_than_or_equal(self, left: Expr, right: Expr) -> Result<Expr, Error> {
         match (left, right) {
             (Expr::Literal(Literal::Number(l)), Expr::Literal(Literal::Number(r))) => {
-                Expr::Literal(Literal::Bool(l >= r))
+                Ok(Expr::Literal(Literal::Bool(l >= r)))
             }
-            _ => panic!("Operands must be numbers"),
+            _ => Err(Error::new("Operands must be numbers".to_string())),
         }
     }
 
-    fn less_than(self, left: Expr, right: Expr) -> Expr {
+    fn less_than(self, left: Expr, right: Expr) -> Result<Expr, Error> {
         match (left, right) {
             (Expr::Literal(Literal::Number(l)), Expr::Literal(Literal::Number(r))) => {
-                Expr::Literal(Literal::Bool(l < r))
+                Ok(Expr::Literal(Literal::Bool(l < r)))
             }
-            _ => panic!("Operands must be numbers"),
+            _ => Err(Error::new("Operands must be numbers".to_string())),
         }
     }
 
-    fn less_than_or_equal(self, left: Expr, right: Expr) -> Expr {
+    fn less_than_or_equal(self, left: Expr, right: Expr) -> Result<Expr, Error> {
         match (left, right) {
             (Expr::Literal(Literal::Number(l)), Expr::Literal(Literal::Number(r))) => {
-                Expr::Literal(Literal::Bool(l <= r))
+                Ok(Expr::Literal(Literal::Bool(l <= r)))
             }
-            _ => panic!("Operands must be numbers"),
+            _ => Err(Error::new("Operands must be numbers".to_string())),
         }
     }
 }
