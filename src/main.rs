@@ -35,10 +35,12 @@ fn run_test(path: &String) {
     let mut parser: Parser = Parser::new(lexer.tokens);
     let ast = parser.parse();
 
+    let mut interpreter: Interpreter = Interpreter::new();
+
     let only_ok = ast.iter().filter(|result| result.is_ok());
     if only_ok.count() == ast.len() {
-        let mut resolver: Resolver = Resolver::new();
-        let result = apply_visitor(&mut resolver, &ast);
+        let mut resolver: Resolver = Resolver::new(&mut interpreter);
+        apply_visitor(&mut resolver, &ast);
     } else {
         let only_err = ast.iter().filter(|result| result.is_err());
         for err in only_err {
@@ -47,7 +49,6 @@ fn run_test(path: &String) {
     }
 
     {
-        let mut interpreter: Interpreter = Interpreter::new();
         let res = apply_visitor(&mut interpreter, &ast);
         let only_err = ast.iter().filter(|result| result.is_err());
     }

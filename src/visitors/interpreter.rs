@@ -1,4 +1,6 @@
+use std::collections::hash_map::DefaultHasher;
 use std::collections::HashMap;
+use std::{hash::Hash, hash::Hasher};
 
 use crate::ast::{
     Assign, Binary, Block, Error, Expr, Expression, FunDecl, Function, Grouping, IVisitorExpr,
@@ -26,14 +28,20 @@ impl Environment {
         self.symbol_table.get(name).cloned()
     }
 }
+
+#[derive(Debug, PartialEq)]
 pub struct Interpreter {
     environments: Vec<Environment>,
+    locals: HashMap<u64, usize>,
+    globals: HashMap<String, Expr>,
     actual_env_number: usize,
 }
 impl Interpreter {
     pub fn new() -> Self {
         Interpreter {
             environments: vec![Environment::new()],
+            locals: HashMap::new(),
+            globals: HashMap::new(),
             actual_env_number: 0,
         }
     }
@@ -54,7 +62,6 @@ impl Interpreter {
 
     pub fn destroy_environment(&mut self, pos: usize) {
         self.environments.remove(pos);
-        //self.actual_env_number -= 1;
     }
 
     pub fn define_symbol(&mut self, name: &str, value: Expr) {
@@ -64,14 +71,36 @@ impl Interpreter {
             .define(name, value);
     }
 
-    pub fn get_symbol(&self, name: &str) -> Option<Expr> {
+    pub fn get_symbol_at(&self, pos: usize, name: &str) -> Result<Option<Expr>, Error> {
+        let env = self
+            .environments
+            .iter()
+            .nth(self.actual_env_number + 1 - pos)
+            .unwrap();
+        let symbol = env.retrieve(name);
+        if symbol.is_some() {
+            return Ok(symbol);
+        }
+        Ok(None)
+    }
+
+    pub fn get_symbol(&self, name: &str) -> Result<Option<Expr>, Error> {
         for env in self.environments.iter().rev() {
             let symbol = env.retrieve(name);
             if symbol.is_some() {
-                return symbol;
+                return Ok(symbol);
             }
         }
-        None
+        Ok(None)
+    }
+
+    pub fn assign_symbol_at(&mut self, pos: usize, name: &str, value: Expr) {
+        let env = self
+            .environments
+            .iter_mut()
+            .nth(self.actual_env_number + 1 - pos)
+            .unwrap();
+        env.define(name, value);
     }
 
     pub fn assign_symbol(&mut self, name: &str, value: Expr) {
@@ -93,6 +122,27 @@ impl Interpreter {
             }
         }
         false
+    }
+
+    fn lookup_symbol(&self, name: &str, expr: Expr) -> Result<Option<Expr>, Error> {
+        let hash = Self::calculate_hash(&expr);
+        let distance = self.locals.get(&hash);
+
+        match distance {
+            Some(distance) => self.get_symbol_at(*distance, name),
+            None => Ok(self.globals.get(name).cloned()),
+        }
+    }
+
+    pub fn calculate_hash<T: Hash>(t: &T) -> u64 {
+        let mut s = DefaultHasher::new();
+        t.hash(&mut s);
+        s.finish()
+    }
+
+    pub fn resolve(&mut self, expr: &mut Expr, depth: usize) {
+        let hash = Self::calculate_hash(expr);
+        self.locals.insert(hash, depth);
     }
 }
 
@@ -264,13 +314,15 @@ impl IVisitorExpr<Result<Option<Expr>, Error>> for Interpreter {
 
     fn visit_var(&mut self, expr: &Expr) -> Result<Option<Expr>, Error> {
         if let Expr::Var(Var::Token(name)) = expr {
-            match self.get_symbol(name.lexeme.as_str()) {
+            self.lookup_symbol(name.lexeme.as_str(), expr.clone())
+
+            /*match self.get_symbol(name.lexeme.as_str()) {
                 Some(exp) => Ok(Some(exp)),
                 None => Err(Error::new(format!(
                     "Symbol {} not found",
                     name.lexeme.as_str(),
                 ))),
-            }
+            }*/
         } else {
             Err(Error::new("Invalid expression".to_string()))
         }
@@ -280,9 +332,22 @@ impl IVisitorExpr<Result<Option<Expr>, Error>> for Interpreter {
         if let Expr::Assign(Assign { var, expr }) = expr {
             let Var::Token(token) = var;
             let var_name: String = token.lexeme.to_owned();
+
             if self.check_symbol(&var_name, self.actual_env_number) {
                 let accepted_expr = expr.accept(self).unwrap().unwrap();
-                self.assign_symbol(var_name.as_str(), accepted_expr.clone());
+
+                let hash = Self::calculate_hash(&accepted_expr);
+                let distance = self.locals.get(&hash);
+
+                match distance {
+                    Some(distance) => {
+                        self.assign_symbol_at(*distance, var_name.as_str(), accepted_expr.clone())
+                    }
+                    None => {
+                        self.globals.insert(var_name, accepted_expr.clone());
+                    }
+                }
+
                 Ok(Some(accepted_expr))
             } else {
                 Err(Error::new(format!("Undefined variable '{}'.", var_name)))

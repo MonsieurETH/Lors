@@ -1,24 +1,24 @@
 use core::panic;
-use std::{
-    collections::{hash_map::DefaultHasher, HashMap},
-    hash::Hash,
-    hash::Hasher,
-};
+use std::collections::HashMap;
 
 use crate::ast::{
     Assign, Binary, Block, Error, Expr, FunDecl, Grouping, IVisitorExpr, IVisitorStmt, If, Logical,
     Return, Stmt, Unary, Var, VarDecl, While,
 };
 
+use super::interpreter::{self, Interpreter};
+
 #[derive(Debug, PartialEq)]
 pub struct Scope {
     symbol_table: HashMap<String, bool>,
+    interpreter: Interpreter,
 }
 
 impl Scope {
     pub fn new() -> Self {
         Scope {
             symbol_table: HashMap::new(),
+            interpreter: Interpreter::new(),
         }
     }
 
@@ -39,16 +39,24 @@ impl Scope {
     }
 }
 
-pub struct Resolver {
+pub struct Resolver<'a> {
     environments: Vec<Scope>,
-    locals: HashMap<u64, usize>,
+    interpreter: &'a mut Interpreter,
+    current_function: FunctionType,
 }
 
-impl Resolver {
-    pub fn new() -> Self {
+#[derive(Debug, Clone, PartialEq)]
+pub enum FunctionType {
+    None,
+    Function,
+}
+
+impl<'a> Resolver<'a> {
+    pub fn new(interpreter: &'a mut Interpreter) -> Self {
         Resolver {
             environments: vec![Scope::new()],
-            locals: HashMap::new(),
+            interpreter,
+            current_function: FunctionType::None,
         }
     }
 
@@ -60,11 +68,19 @@ impl Resolver {
         self.environments.pop();
     }
 
-    pub fn declare(&mut self, name: &str) {
+    pub fn declare(&mut self, name: &str) -> Result<Option<Stmt>, Error> {
         if self.environments.len() == 0 {
-            return;
+            return Ok(None);
         }
-        self.environments.last_mut().unwrap().define(name, false);
+        let scope = self.environments.last_mut().unwrap();
+        if scope.exists(name) {
+            return Err(Error::new(format!(
+                "{:?} Already a variable with this name in this scope.",
+                name
+            )));
+        }
+        scope.define(name, false);
+        Ok(None)
     }
 
     pub fn define(&mut self, name: &str) {
@@ -81,7 +97,8 @@ impl Resolver {
     pub fn resolve_local(&mut self, expr: &mut Expr, name: &str) {
         for (i, scope) in self.environments.iter().rev().enumerate() {
             if scope.exists(name) {
-                self.resolve(expr, self.environments.len() - 1 - i);
+                self.interpreter
+                    .resolve(expr, self.environments.len() - 1 - i);
                 return;
             }
             if i == 0 {
@@ -90,24 +107,15 @@ impl Resolver {
         }
     }
 
-    fn calculate_hash<T: Hash>(t: &T) -> u64 {
-        let mut s = DefaultHasher::new();
-        t.hash(&mut s);
-        s.finish()
-    }
-
-    pub fn resolve(&mut self, expr: &mut Expr, depth: usize) {
-        let hash = Self::calculate_hash(expr);
-        self.locals.insert(hash, depth);
-    }
-
-    pub fn resolve_function(&mut self, stmt: &Stmt) {
+    pub fn resolve_function(&mut self, stmt: &Stmt, ftype: FunctionType) {
         if let Stmt::FunDecl(FunDecl {
             name,
             parameters,
             body: _,
         }) = stmt
         {
+            let enclosing_function = self.current_function.clone();
+            self.current_function = ftype;
             self.begin_scope();
 
             for parameter in parameters {
@@ -117,11 +125,12 @@ impl Resolver {
 
             stmt.accept(self);
             self.end_scope();
+            self.current_function = enclosing_function;
         }
     }
 }
 
-impl IVisitorStmt<Result<Option<Stmt>, Error>> for Resolver {
+impl<'a> IVisitorStmt<Result<Option<Stmt>, Error>> for Resolver<'a> {
     fn visit_expr(&mut self, stmt: &Stmt) -> Result<Option<Stmt>, Error> {
         stmt.accept(self)
     }
@@ -134,7 +143,7 @@ impl IVisitorStmt<Result<Option<Stmt>, Error>> for Resolver {
         match stmt {
             Stmt::VarDecl(VarDecl { name, expr }) => {
                 self.declare(name.as_str());
-                let accepted_expr = expr.accept(self).unwrap();
+                expr.accept(self).unwrap();
                 self.define(name.as_str());
                 Ok(None)
             }
@@ -191,7 +200,7 @@ impl IVisitorStmt<Result<Option<Stmt>, Error>> for Resolver {
                 self.declare(name);
                 self.define(name);
 
-                self.resolve_function(stmt);
+                self.resolve_function(stmt, FunctionType::Function);
                 Ok(None)
             }
             _ => Err(Error::new("Invalid statement".to_string())),
@@ -201,6 +210,12 @@ impl IVisitorStmt<Result<Option<Stmt>, Error>> for Resolver {
     fn visit_return(&mut self, stmt: &Stmt) -> Result<Option<Stmt>, Error> {
         match stmt {
             Stmt::Return(Return { keyword, value }) => {
+                if self.current_function == FunctionType::None {
+                    return Err(Error::new(format!(
+                        "{:?} Can't return from top-level code.",
+                        keyword
+                    )));
+                }
                 //if *value != Expr::Literal(Literal::Nil) {
                 value.accept(self).unwrap();
                 //}
@@ -215,11 +230,11 @@ impl IVisitorStmt<Result<Option<Stmt>, Error>> for Resolver {
         stmts: &Vec<Stmt>,
         context_number: usize,
     ) -> Result<Option<Stmt>, Error> {
-        todo!()
+        Ok(None)
     }
 }
 
-impl IVisitorExpr<Result<Option<Expr>, Error>> for Resolver {
+impl<'a> IVisitorExpr<Result<Option<Expr>, Error>> for Resolver<'a> {
     fn visit_var(&mut self, expr: &Expr) -> Result<Option<Expr>, Error> {
         if let Expr::Var(Var::Token(token)) = expr {
             if !(self.environments.len() == 0) && (self.get(&token.lexeme).unwrap() == false) {
