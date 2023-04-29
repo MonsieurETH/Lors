@@ -125,8 +125,8 @@ impl IVisitorStmt<Result<Option<Stmt>, Error>> for Interpreter {
     fn visit_var_decl(&mut self, stmt: &Stmt) -> Result<Option<Stmt>, Error> {
         match stmt {
             Stmt::VarDecl(VarDecl { name, expr }) => {
-                let accepted_expr = expr.accept(self).unwrap();
-                self.define_symbol(name.as_str(), accepted_expr);
+                let accepted_expr = expr.accept(self)?;
+                self.define_symbol(name.as_str(), accepted_expr.unwrap());
                 Ok(None)
             }
             _ => Err(Error::new("Invalid statement".to_string())),
@@ -141,7 +141,7 @@ impl IVisitorStmt<Result<Option<Stmt>, Error>> for Interpreter {
         }) = stmt
         {
             let eval_condition = condition.accept(self).unwrap();
-            if let Expr::Literal(Literal::Bool(b)) = eval_condition {
+            if let Some(Expr::Literal(Literal::Bool(b))) = eval_condition {
                 if b {
                     _ = branch_true.accept(self)
                 } else {
@@ -155,7 +155,7 @@ impl IVisitorStmt<Result<Option<Stmt>, Error>> for Interpreter {
     fn visit_while(&mut self, stmt: &Stmt) -> Result<Option<Stmt>, Error> {
         if let Stmt::While(While { condition, body }) = stmt {
             let mut accepted_cond = condition.accept(self).unwrap();
-            while let Expr::Literal(Literal::Bool(true)) = accepted_cond {
+            while let Some(Expr::Literal(Literal::Bool(true))) = accepted_cond {
                 accepted_cond = condition.accept(self).unwrap();
                 _ = body.accept(self)
             }
@@ -212,7 +212,7 @@ impl IVisitorStmt<Result<Option<Stmt>, Error>> for Interpreter {
         if let Stmt::Return(Return { keyword, value }) = stmt {
             let val = match value {
                 Expr::Literal(Literal::Nil) => Expr::Literal(Literal::Nil),
-                _ => value.accept(self).unwrap(),
+                _ => value.accept(self).unwrap().unwrap(),
             };
 
             Ok(Some(Stmt::Return(Return {
@@ -225,36 +225,36 @@ impl IVisitorStmt<Result<Option<Stmt>, Error>> for Interpreter {
     }
 }
 
-impl IVisitorExpr<Result<Expr, Error>> for Interpreter {
-    fn visit_literal(&mut self, expr: &Expr) -> Result<Expr, Error> {
-        Ok(expr.clone())
+impl IVisitorExpr<Result<Option<Expr>, Error>> for Interpreter {
+    fn visit_literal(&mut self, expr: &Expr) -> Result<Option<Expr>, Error> {
+        Ok(Some(expr.clone()))
     }
 
-    fn visit_unary(&mut self, expr: &Expr) -> Result<Expr, Error> {
+    fn visit_unary(&mut self, expr: &Expr) -> Result<Option<Expr>, Error> {
         if let Expr::Unary(Unary { operator, right }) = expr {
-            let accepted_right = right.accept(self).unwrap();
+            let accepted_right = right.accept(self).unwrap().unwrap();
             operator.clone().unary(accepted_right)
         } else {
             Err(Error::new("Invalid expression".to_string()))
         }
     }
 
-    fn visit_binary(&mut self, expr: &Expr) -> Result<Expr, Error> {
+    fn visit_binary(&mut self, expr: &Expr) -> Result<Option<Expr>, Error> {
         if let Expr::Binary(Binary {
             left,
             operator,
             right,
         }) = expr
         {
-            let accepted_left = left.accept(self).unwrap();
-            let accepted_right = right.accept(self).unwrap();
+            let accepted_left = left.accept(self).unwrap().unwrap();
+            let accepted_right = right.accept(self).unwrap().unwrap();
             operator.clone().binary(accepted_left, accepted_right)
         } else {
             Err(Error::new("Invalid expression".to_string()))
         }
     }
 
-    fn visit_grouping(&mut self, expr: &Expr) -> Result<Expr, Error> {
+    fn visit_grouping(&mut self, expr: &Expr) -> Result<Option<Expr>, Error> {
         if let Expr::Grouping(Grouping { group }) = expr {
             group.accept(self)
         } else {
@@ -262,10 +262,10 @@ impl IVisitorExpr<Result<Expr, Error>> for Interpreter {
         }
     }
 
-    fn visit_var(&mut self, expr: &Expr) -> Result<Expr, Error> {
+    fn visit_var(&mut self, expr: &Expr) -> Result<Option<Expr>, Error> {
         if let Expr::Var(Var::Token(name)) = expr {
             match self.get_symbol(name.lexeme.as_str()) {
-                Some(exp) => Ok(exp),
+                Some(exp) => Ok(Some(exp)),
                 None => Err(Error::new(format!(
                     "Symbol {} not found",
                     name.lexeme.as_str(),
@@ -276,14 +276,14 @@ impl IVisitorExpr<Result<Expr, Error>> for Interpreter {
         }
     }
 
-    fn visit_assign(&mut self, expr: &Expr) -> Result<Expr, Error> {
+    fn visit_assign(&mut self, expr: &Expr) -> Result<Option<Expr>, Error> {
         if let Expr::Assign(Assign { var, expr }) = expr {
             let Var::Token(token) = var;
             let var_name: String = token.lexeme.to_owned();
             if self.check_symbol(&var_name, self.actual_env_number) {
-                let accepted_expr = expr.accept(self)?;
+                let accepted_expr = expr.accept(self).unwrap().unwrap();
                 self.assign_symbol(var_name.as_str(), accepted_expr.clone());
-                Ok(accepted_expr)
+                Ok(Some(accepted_expr))
             } else {
                 Err(Error::new(format!("Undefined variable '{}'.", var_name)))
             }
@@ -292,7 +292,7 @@ impl IVisitorExpr<Result<Expr, Error>> for Interpreter {
         }
     }
 
-    fn visit_logical(&mut self, expr: &Expr) -> Result<Expr, Error> {
+    fn visit_logical(&mut self, expr: &Expr) -> Result<Option<Expr>, Error> {
         if let Expr::Logical(Logical {
             left,
             operator,
@@ -302,14 +302,14 @@ impl IVisitorExpr<Result<Expr, Error>> for Interpreter {
             let left_accepted = left.accept(self).unwrap();
             let accepted = match operator {
                 Operator::Or => {
-                    if let Expr::Literal(Literal::Bool(false)) = left_accepted {
+                    if let Some(Expr::Literal(Literal::Bool(false))) = left_accepted {
                         left_accepted
                     } else {
                         right.accept(self).unwrap()
                     }
                 }
                 _ => {
-                    if let Expr::Literal(Literal::Bool(false)) = left_accepted {
+                    if let Some(Expr::Literal(Literal::Bool(false))) = left_accepted {
                         left_accepted
                     } else {
                         right.accept(self).unwrap()
@@ -323,13 +323,13 @@ impl IVisitorExpr<Result<Expr, Error>> for Interpreter {
         }
     }
 
-    fn visit_call(self: &mut Interpreter, expr: &Expr) -> Result<Expr, Error> {
+    fn visit_call(self: &mut Interpreter, expr: &Expr) -> Result<Option<Expr>, Error> {
         if let Expr::Call(call) = expr {
-            let callee_accepted = call.callee.accept(self).unwrap();
+            let callee_accepted = call.callee.accept(self).unwrap().unwrap();
             let args: Vec<Expr> = call
                 .arguments
                 .iter()
-                .map(|arg| arg.accept(self).unwrap())
+                .map(|arg| arg.accept(self).unwrap().unwrap())
                 .collect();
 
             match callee_accepted {
@@ -349,7 +349,7 @@ impl IVisitorExpr<Result<Expr, Error>> for Interpreter {
                             name
                         )))
                     } else {
-                        Ok(fun.execute_call(self, args))
+                        Ok(Some(fun.execute_call(self, args)))
                     }
                 }
                 _ => Err(Error::new("Invalid call".to_string())),

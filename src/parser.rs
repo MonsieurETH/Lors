@@ -36,8 +36,8 @@
 //logic_and      → equality ( "and" equality )* ;
 
 use crate::ast::{
-    Assign, Binary, Block, Call, Expr, Expression, FunDecl, Grouping, If, Literal, Logical, Print,
-    Return, Stmt, Unary, Var, VarDecl, While,
+    Assign, Binary, Block, Call, Error, Expr, Expression, FunDecl, Grouping, If, Literal, Logical,
+    Print, Return, Stmt, Unary, Var, VarDecl, While,
 };
 use crate::lexer::{Token, TokenLiteral, TokenType};
 use crate::operators::Operator;
@@ -53,17 +53,17 @@ impl Parser {
         Parser { tokens, current: 0 }
     }
 
-    pub fn parse(&mut self) -> Vec<Result<Stmt, String>> {
+    pub fn parse(&mut self) -> Vec<Result<Stmt, Error>> {
         self.program()
     }
 
-    fn program(&mut self) -> Vec<Result<Stmt, String>> {
+    fn program(&mut self) -> Vec<Result<Stmt, Error>> {
         let mut program = vec![];
         while !self.is_at_end() {
             let stmt = self.declaration();
             match stmt {
                 Ok(stmt) => program.push(Ok(stmt)),
-                Err(err) => return vec![Err(err)],
+                Err(Error { msg: message }) => return vec![Err(Error { msg: message })],
             }
             //program.push(stmt);
         }
@@ -71,7 +71,7 @@ impl Parser {
         program
     }
 
-    fn declaration(&mut self) -> Result<Stmt, String> {
+    fn declaration(&mut self) -> Result<Stmt, Error> {
         if self.ismatch(&[TokenType::Var])? {
             self.var_decl()
         } else if self.ismatch(&[TokenType::Fun])? {
@@ -82,7 +82,7 @@ impl Parser {
         //TODO catch error & synchronize
     }
 
-    fn var_decl(&mut self) -> Result<Stmt, String> {
+    fn var_decl(&mut self) -> Result<Stmt, Error> {
         let name = self
             .consume(TokenType::Identifier, "Expect variable name.")?
             .lexeme
@@ -103,7 +103,7 @@ impl Parser {
         }))
     }
 
-    fn fun_decl(&mut self, kind: &str) -> Result<Stmt, String> {
+    fn fun_decl(&mut self, kind: &str) -> Result<Stmt, Error> {
         let name = self
             .consume(TokenType::Identifier, &format!("Expect {} name.", kind))?
             .lexeme
@@ -118,7 +118,9 @@ impl Parser {
         if !self.check(&TokenType::RightParen) {
             loop {
                 if parameters.len() >= 255 {
-                    return Err("Cannot have more than 255 arguments.".to_string());
+                    return Err(Error {
+                        msg: format!("Cannot have more than 255 arguments."),
+                    });
                 }
                 let token = self.consume(TokenType::Identifier, "Expect parameter name.")?;
                 parameters.push(token.to_owned());
@@ -143,7 +145,7 @@ impl Parser {
         }))
     }
 
-    fn statement(&mut self) -> Result<Stmt, String> {
+    fn statement(&mut self) -> Result<Stmt, Error> {
         if self.ismatch(&[TokenType::Print])? {
             self.print_stmt()
         } else if self.ismatch(&[TokenType::LeftBrace])? {
@@ -163,7 +165,7 @@ impl Parser {
         }
     }
 
-    fn if_stmt(&mut self) -> Result<Stmt, String> {
+    fn if_stmt(&mut self) -> Result<Stmt, Error> {
         self.consume(TokenType::LeftParen, "Expect '(' after 'if'.")?;
         let condition: Expr = self.expression()?;
         self.consume(TokenType::RightParen, "Expect ')' after if condition")?;
@@ -182,7 +184,7 @@ impl Parser {
         }))
     }
 
-    fn return_stmt(&mut self) -> Result<Stmt, String> {
+    fn return_stmt(&mut self) -> Result<Stmt, Error> {
         let keyword: Token = self.previous()?.clone();
         let mut value: Option<Expr> = None;
         if !self.check(&TokenType::Semicolon) {
@@ -197,7 +199,7 @@ impl Parser {
         }))
     }
 
-    fn for_stmt(&mut self) -> Result<Stmt, String> {
+    fn for_stmt(&mut self) -> Result<Stmt, Error> {
         self.consume(TokenType::LeftParen, "Expect '(' after 'if'.")?;
         let initializer: Option<Stmt> = if self.ismatch(&[TokenType::Semicolon])? {
             None
@@ -257,7 +259,7 @@ impl Parser {
         Ok(body)
     }
 
-    fn while_stmt(&mut self) -> Result<Stmt, String> {
+    fn while_stmt(&mut self) -> Result<Stmt, Error> {
         self.consume(TokenType::LeftParen, "Expect '(' after 'if'.")?;
         let condition: Expr = self.expression()?;
         self.consume(TokenType::RightParen, "Expect ')' after if condition")?;
@@ -269,7 +271,7 @@ impl Parser {
         }))
     }
 
-    fn block(&mut self) -> Result<Vec<Stmt>, String> {
+    fn block(&mut self) -> Result<Vec<Stmt>, Error> {
         let mut statements: Vec<Stmt> = vec![];
 
         while !self.ismatch(&[TokenType::RightBrace])? && !self.is_at_end() {
@@ -280,7 +282,7 @@ impl Parser {
         Ok(statements)
     }
 
-    fn expr_stmt(&mut self) -> Result<Stmt, String> {
+    fn expr_stmt(&mut self) -> Result<Stmt, Error> {
         let value: Expr = self.expression()?;
         self.consume(TokenType::Semicolon, "Expect ';' after value.")?;
         Ok(Stmt::Expression(Expression {
@@ -288,7 +290,7 @@ impl Parser {
         }))
     }
 
-    fn print_stmt(&mut self) -> Result<Stmt, String> {
+    fn print_stmt(&mut self) -> Result<Stmt, Error> {
         let value: Expr = self.expression()?;
         self.consume(TokenType::Semicolon, "Expect ';' after value.")?;
         Ok(Stmt::Print(Print {
@@ -296,11 +298,11 @@ impl Parser {
         }))
     }
 
-    fn expression(&mut self) -> Result<Expr, String> {
+    fn expression(&mut self) -> Result<Expr, Error> {
         self.assigment()
     }
 
-    fn assigment(&mut self) -> Result<Expr, String> {
+    fn assigment(&mut self) -> Result<Expr, Error> {
         //let expr: Expr = self.equality();
         let expr: Expr = self.or()?;
 
@@ -313,14 +315,16 @@ impl Parser {
                     var,
                     expr: Box::new(value),
                 })),
-                _ => Err(format!("Error at '=': Invalid assignment target.",)),
+                _ => Err(Error {
+                    msg: format!("Error at '=': Invalid assignment target.",),
+                }),
             }
         } else {
             Ok(expr)
         }
     }
 
-    fn or(&mut self) -> Result<Expr, String> {
+    fn or(&mut self) -> Result<Expr, Error> {
         let mut expr: Expr = self.and()?;
         while self.ismatch(&[TokenType::Or])? {
             let operator: Operator = Operator::from_token(self.previous()?);
@@ -334,7 +338,7 @@ impl Parser {
         Ok(expr)
     }
 
-    fn and(&mut self) -> Result<Expr, String> {
+    fn and(&mut self) -> Result<Expr, Error> {
         let mut expr: Expr = self.equality()?;
         while self.ismatch(&[TokenType::And])? {
             let operator: Operator = Operator::from_token(self.previous()?);
@@ -348,7 +352,7 @@ impl Parser {
         Ok(expr)
     }
 
-    fn equality(&mut self) -> Result<Expr, String> {
+    fn equality(&mut self) -> Result<Expr, Error> {
         let mut expr: Expr = self.comparison()?;
 
         while self.ismatch(&[TokenType::BangEqual, TokenType::EqualEqual])? {
@@ -364,7 +368,7 @@ impl Parser {
         Ok(expr)
     }
 
-    fn comparison(&mut self) -> Result<Expr, String> {
+    fn comparison(&mut self) -> Result<Expr, Error> {
         let mut expr: Expr = self.term()?;
 
         while self.ismatch(&[
@@ -385,7 +389,7 @@ impl Parser {
         Ok(expr)
     }
 
-    fn term(&mut self) -> Result<Expr, String> {
+    fn term(&mut self) -> Result<Expr, Error> {
         let mut expr: Expr = self.factor()?;
 
         while self.ismatch(&[TokenType::Minus, TokenType::Plus])? {
@@ -401,7 +405,7 @@ impl Parser {
         Ok(expr)
     }
 
-    fn factor(&mut self) -> Result<Expr, String> {
+    fn factor(&mut self) -> Result<Expr, Error> {
         let mut expr: Expr = self.unary()?;
 
         while self.ismatch(&[TokenType::Slash, TokenType::Star])? {
@@ -417,7 +421,7 @@ impl Parser {
         Ok(expr)
     }
 
-    fn unary(&mut self) -> Result<Expr, String> {
+    fn unary(&mut self) -> Result<Expr, Error> {
         if self.ismatch(&[TokenType::Bang, TokenType::Minus])? {
             let operator: Operator = Operator::from_token(self.previous()?);
             let right: Expr = self.factor()?;
@@ -432,7 +436,7 @@ impl Parser {
         self.call()
     }
 
-    fn call(&mut self) -> Result<Expr, String> {
+    fn call(&mut self) -> Result<Expr, Error> {
         let mut expr: Expr = self.primary()?;
 
         loop {
@@ -446,12 +450,14 @@ impl Parser {
         Ok(expr)
     }
 
-    fn finish_call(&mut self, callee: Expr) -> Result<Expr, String> {
+    fn finish_call(&mut self, callee: Expr) -> Result<Expr, Error> {
         let mut arguments: Vec<Expr> = vec![];
         if !self.check(&TokenType::RightParen) {
             loop {
                 if arguments.len() >= 255 {
-                    panic!("Cannot have more than 255 arguments.");
+                    Err(Error {
+                        msg: format!("Cannot have more than 255 arguments."),
+                    })?;
                 }
                 arguments.push(self.expression()?);
                 if !self.ismatch(&[TokenType::Comma])? {
@@ -468,7 +474,7 @@ impl Parser {
         }))
     }
 
-    fn primary(&mut self) -> Result<Expr, String> {
+    fn primary(&mut self) -> Result<Expr, Error> {
         if self.ismatch(&[TokenType::False])? {
             Ok(Expr::Literal(Literal::Bool(false)))
         } else if self.ismatch(&[TokenType::True])? {
@@ -491,11 +497,13 @@ impl Parser {
         } else if self.ismatch(&[TokenType::Identifier])? {
             Ok(Expr::Var(Var::Token(self.previous()?.to_owned())))
         } else {
-            Err("Invalid type".to_string())
+            Err(Error {
+                msg: "Invalid type".to_string(),
+            })
         }
     }
 
-    fn ismatch(&mut self, tokens: &[TokenType]) -> Result<bool, String> {
+    fn ismatch(&mut self, tokens: &[TokenType]) -> Result<bool, Error> {
         for token_type in tokens {
             if self.check(token_type) {
                 self.advance()?;
@@ -513,7 +521,7 @@ impl Parser {
         self.peek().token_type == *token_type
     }
 
-    fn advance(&mut self) -> Result<&Token, String> {
+    fn advance(&mut self) -> Result<&Token, Error> {
         if !self.is_at_end() {
             self.current += 1;
         }
@@ -528,18 +536,22 @@ impl Parser {
         self.tokens.get(self.current).unwrap()
     }
 
-    fn previous(&mut self) -> Result<&Token, String> {
+    fn previous(&mut self) -> Result<&Token, Error> {
         match self.tokens.get(self.current - 1) {
             Some(token) => Ok(token),
-            None => Err(format!("No previous token")),
+            None => Err(Error {
+                msg: format!("No previous token"),
+            }),
         }
     }
 
-    fn consume(&mut self, token_type: TokenType, message: &str) -> Result<&Token, String> {
+    fn consume(&mut self, token_type: TokenType, message: &str) -> Result<&Token, Error> {
         if self.check(&token_type) {
             self.advance()
         } else {
-            Err(format!("{} in {:?}", message, self.peek()))
+            Err(Error {
+                msg: format!("{} in {:?}", message, self.peek()),
+            })
         }
     }
 }

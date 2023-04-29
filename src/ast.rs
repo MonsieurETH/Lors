@@ -1,16 +1,18 @@
+use ordered_float::OrderedFloat;
+
 use crate::lexer::Token;
 use crate::operators::Operator;
 use crate::visitors::interpreter::Interpreter;
 
 macro_rules! define_ast {
     (pub enum $root:ident { $($n:ident: $t:ident $b:tt),* $(,)? }) => {
-        #[derive(Clone, PartialEq, Debug)]
+        #[derive(Clone, PartialEq, Debug, Hash)]
         pub enum $root {
             $($n($n)),*
         }
 
         $(
-            #[derive(Clone, PartialEq, Debug)]
+            #[derive(Clone, PartialEq, Debug, Hash)]
             pub $t $n $b
         )*
     }
@@ -20,7 +22,7 @@ define_ast!(
     pub enum Expr {
         Literal: enum {
             Bool(bool),
-            Number(f64),
+            Number(OrderedFloat<f64>),
             Str(String),
             Nil,
         },
@@ -109,7 +111,6 @@ impl Stmt {
             Stmt::While(_) => visitor.visit_while(&self),
             Stmt::FunDecl(_) => visitor.visit_fun_decl(&self),
             Stmt::Return(_) => visitor.visit_return(&self),
-            //_ => panic!("Invalid statement"),
         }
     }
 }
@@ -125,7 +126,6 @@ impl Expr {
             Expr::Assign(_) => visitor.visit_assign(&self),
             Expr::Logical(_) => visitor.visit_logical(&self),
             Expr::Call(_) => visitor.visit_call(&self),
-            //Expr::Function(_) => visitor.call_function(&self),
             _ => panic!("Invalid expression"),
         }
     }

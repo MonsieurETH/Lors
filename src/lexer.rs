@@ -6,7 +6,7 @@ pub struct Lexer {
     line: usize,
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Hash)]
 pub enum TokenType {
     // Single-character tokens.
     LeftParen,
@@ -58,7 +58,7 @@ pub enum TokenType {
     Eof,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Hash)]
 pub struct Token {
     pub token_type: TokenType,
     pub lexeme: String,
@@ -66,10 +66,10 @@ pub struct Token {
     line: usize,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Hash)]
 pub enum TokenLiteral {
     Str(String),
-    Number(f64),
+    Number(ordered_float::OrderedFloat<f64>),
 }
 
 impl Lexer {
@@ -228,7 +228,10 @@ impl Lexer {
         let value = &self.source[self.start..self.current];
         let value: f64 = value.parse().unwrap();
 
-        self.add_token(TokenType::Number, Some(TokenLiteral::Number(value)));
+        self.add_token(
+            TokenType::Number,
+            Some(TokenLiteral::Number(ordered_float::OrderedFloat(value))),
+        );
     }
 
     fn add_token(&mut self, token_type: TokenType, literal: Option<TokenLiteral>) {
