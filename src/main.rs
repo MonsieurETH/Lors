@@ -49,7 +49,7 @@ fn run_test(path: &String) {
     }
 
     apply_visitor(&mut interpreter, &ast);
-    let only_err = ast.iter().filter(|result| result.is_err());
+    let _ = ast.iter().filter(|result| result.is_err());
 }
 
 type ResultStmt = Result<Option<Stmt>, Error>;
@@ -90,7 +90,7 @@ fn run(source: &String) -> bool {
     }
 
     apply_visitor(&mut interpreter, &ast);
-    let only_err = ast.iter().filter(|result| result.is_err());
+    let _ = ast.iter().filter(|result| result.is_err());
 
     false
 }

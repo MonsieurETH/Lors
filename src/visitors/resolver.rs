@@ -33,10 +33,6 @@ impl Scope {
     pub fn exists(&self, name: &str) -> bool {
         self.symbol_table.contains_key(name)
     }
-
-    pub fn empty(&self) -> bool {
-        self.symbol_table.is_empty()
-    }
 }
 
 pub struct Resolver<'a> {
@@ -126,9 +122,13 @@ impl<'a> Resolver<'a> {
         }
     }
 
-    pub fn resolve_function(&mut self, stmt: &Stmt, ftype: FunctionType) {
+    pub fn resolve_function(
+        &mut self,
+        stmt: &Stmt,
+        ftype: FunctionType,
+    ) -> Result<Option<Stmt>, Error> {
         if let Stmt::FunDecl(FunDecl {
-            name,
+            name: _,
             parameters,
             body,
         }) = stmt
@@ -138,7 +138,7 @@ impl<'a> Resolver<'a> {
             self.begin_scope();
 
             for parameter in parameters {
-                self.declare(&parameter.lexeme);
+                self.declare(&parameter.lexeme)?;
                 self.define(&parameter.lexeme);
             }
 
@@ -147,6 +147,9 @@ impl<'a> Resolver<'a> {
             }
             self.end_scope();
             self.current_function = enclosing_function;
+            Ok(None)
+        } else {
+            Err(Error::new("Invalid statement".to_string()))
         }
     }
 }
@@ -176,7 +179,7 @@ impl<'a> IVisitorStmt<Result<Option<Stmt>, Error>> for Resolver<'a> {
     fn visit_var_decl(&mut self, stmt: &Stmt) -> Result<Option<Stmt>, Error> {
         match stmt {
             Stmt::VarDecl(VarDecl { name, expr }) => {
-                self.declare(name.as_str());
+                self.declare(name.as_str())?;
                 expr.accept(self).unwrap();
                 self.define(name.as_str());
                 Ok(None)
@@ -231,10 +234,10 @@ impl<'a> IVisitorStmt<Result<Option<Stmt>, Error>> for Resolver<'a> {
                 parameters: _,
                 body: _,
             }) => {
-                self.declare(name);
+                self.declare(name)?;
                 self.define(name);
 
-                self.resolve_function(stmt, FunctionType::Function);
+                self.resolve_function(stmt, FunctionType::Function)?;
                 Ok(None)
             }
             _ => Err(Error::new("Invalid statement".to_string())),
@@ -276,12 +279,16 @@ impl<'a> IVisitorExpr<Result<Option<Expr>, Error>> for Resolver<'a> {
         }
     }
 
-    fn visit_literal(&mut self, expr: &Expr) -> Result<Option<Expr>, Error> {
+    fn visit_literal(&mut self, _expr: &Expr) -> Result<Option<Expr>, Error> {
         Ok(None)
     }
 
     fn visit_unary(&mut self, expr: &Expr) -> Result<Option<Expr>, Error> {
-        if let Expr::Unary(Unary { operator, right }) = expr {
+        if let Expr::Unary(Unary {
+            operator: _operator,
+            right,
+        }) = expr
+        {
             right.accept(self).unwrap();
             Ok(None)
         } else {
@@ -292,7 +299,7 @@ impl<'a> IVisitorExpr<Result<Option<Expr>, Error>> for Resolver<'a> {
     fn visit_binary(&mut self, expr: &Expr) -> Result<Option<Expr>, Error> {
         if let Expr::Binary(Binary {
             left,
-            operator,
+            operator: _operator,
             right,
         }) = expr
         {
@@ -315,7 +322,7 @@ impl<'a> IVisitorExpr<Result<Option<Expr>, Error>> for Resolver<'a> {
     fn visit_assign(&mut self, expr: &Expr) -> Result<Option<Expr>, Error> {
         if let Expr::Assign(Assign { var, expr }) = expr {
             let Var::Token(token) = var;
-            let accepted_expr = expr.accept(self);
+            let _accepted_expr = expr.accept(self)?;
             self.resolve_local(&mut expr.clone(), &token.lexeme);
             Ok(None)
         } else {
@@ -326,7 +333,7 @@ impl<'a> IVisitorExpr<Result<Option<Expr>, Error>> for Resolver<'a> {
     fn visit_logical(&mut self, expr: &Expr) -> Result<Option<Expr>, Error> {
         if let Expr::Logical(Logical {
             left,
-            operator,
+            operator: _operator,
             right,
         }) = expr
         {
@@ -340,8 +347,8 @@ impl<'a> IVisitorExpr<Result<Option<Expr>, Error>> for Resolver<'a> {
 
     fn visit_call(&mut self, expr: &Expr) -> Result<Option<Expr>, Error> {
         if let Expr::Call(call) = expr {
-            call.callee.accept(self);
-            let args: Vec<Expr> = call
+            call.callee.accept(self)?;
+            let _args: Vec<Expr> = call
                 .arguments
                 .iter()
                 .map(|arg| arg.accept(self).unwrap().unwrap()) // ?

@@ -2,7 +2,7 @@ use ordered_float::OrderedFloat;
 
 use crate::lexer::Token;
 use crate::operators::Operator;
-use crate::visitors::interpreter::{Environment, Interpreter};
+use crate::visitors::interpreter::Interpreter;
 
 macro_rules! define_ast {
     (pub enum $root:ident { $($n:ident: $t:ident $b:tt),* $(,)? }) => {

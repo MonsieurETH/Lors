@@ -1,6 +1,5 @@
 use std::collections::hash_map::DefaultHasher;
 use std::collections::HashMap;
-use std::env;
 use std::{hash::Hash, hash::Hasher};
 
 use crate::ast::{
@@ -101,7 +100,7 @@ impl Interpreter {
         Ok(None)
     }
 
-    pub fn get_symbol(&self, name: &str) -> Result<Option<Expr>, Error> {
+    /*pub fn get_symbol(&self, name: &str) -> Result<Option<Expr>, Error> {
         for env in self.environments.iter().rev() {
             let symbol = env.retrieve(name);
             if symbol.is_some() {
@@ -109,7 +108,7 @@ impl Interpreter {
             }
         }
         Ok(None)
-    }
+    }*/
 
     pub fn assign_symbol_at(&mut self, pos: usize, name: &str, value: Expr) {
         let env = self
@@ -120,7 +119,7 @@ impl Interpreter {
         env.define(name, value);
     }
 
-    pub fn assign_symbol(&mut self, name: &str, value: Expr) {
+    /*pub fn assign_symbol(&mut self, name: &str, value: Expr) {
         for env in self.environments.iter_mut().rev() {
             let symbol = env.retrieve(name);
             if symbol.is_some() {
@@ -128,9 +127,9 @@ impl Interpreter {
                 break;
             }
         }
-    }
+    }*/
 
-    pub fn check_symbol(&self, name: &str, env: usize) -> bool {
+    pub fn check_symbol(&self, name: &str, _env: usize) -> bool {
         let rev = self.environments.iter().rev();
         for env in rev {
             let symbol = env.retrieve(name);
@@ -333,14 +332,6 @@ impl IVisitorExpr<Result<Option<Expr>, Error>> for Interpreter {
     fn visit_var(&mut self, expr: &Expr) -> Result<Option<Expr>, Error> {
         if let Expr::Var(Var::Token(name)) = expr {
             self.lookup_symbol(name.lexeme.as_str(), expr.clone())
-
-            /*match self.get_symbol(name.lexeme.as_str()) {
-                Some(exp) => Ok(Some(exp)),
-                None => Err(Error::new(format!(
-                    "Symbol {} not found",
-                    name.lexeme.as_str(),
-                ))),
-            }*/
         } else {
             Err(Error::new("Invalid expression".to_string()))
         }
