@@ -3,8 +3,9 @@ use std::collections::HashMap;
 use std::{hash::Hash, hash::Hasher};
 
 use crate::ast::{
-    Assign, Binary, Block, Error, Expr, Expression, FunDecl, Function, Grouping, IVisitorExpr,
-    IVisitorStmt, If, Literal, Logical, Print, Return, Stmt, Unary, Var, VarDecl, While,
+    Assign, Binary, Block, Class, ClassDecl, Error, Expr, Expression, FunDecl, Function, Grouping,
+    IVisitorExpr, IVisitorStmt, If, Literal, Logical, Print, Return, Stmt, Unary, Var, VarDecl,
+    While,
 };
 use crate::operators::Operator;
 
@@ -290,6 +291,24 @@ impl IVisitorStmt<Result<Option<Stmt>, Error>> for Interpreter {
             Err(Error::new("Invalid statement".to_string()))
         }
     }
+
+    fn visit_class(&mut self, stmt: &Stmt) -> Result<Option<Stmt>, Error> {
+        if let Stmt::ClassDecl(ClassDecl {
+            name,
+            methods: _methods,
+        }) = stmt
+        {
+            let class: Class = Class {
+                name: name.lexeme.clone(),
+                //methods,
+            };
+            self.define_symbol(&name.lexeme.as_str(), Expr::Class(class));
+
+            Ok(None)
+        } else {
+            Err(Error::new("Invalid statement".to_string()))
+        }
+    }
 }
 
 impl IVisitorExpr<Result<Option<Expr>, Error>> for Interpreter {
@@ -425,6 +444,10 @@ impl IVisitorExpr<Result<Option<Expr>, Error>> for Interpreter {
                     } else {
                         Ok(Some(fun.execute_call(self, args)))
                     }
+                }
+                Expr::Class(class) => {
+                    let Class { name: _name } = &class;
+                    Ok(Some(class.execute_call(self, args)))
                 }
                 _ => Err(Error::new("Invalid call".to_string())),
             }

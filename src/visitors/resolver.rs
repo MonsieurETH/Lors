@@ -2,8 +2,8 @@ use core::panic;
 use std::collections::HashMap;
 
 use crate::ast::{
-    Assign, Binary, Block, Error, Expr, Expression, FunDecl, Grouping, IVisitorExpr, IVisitorStmt,
-    If, Logical, Print, Return, Stmt, Unary, Var, VarDecl, While,
+    Assign, Binary, Block, ClassDecl, Error, Expr, Expression, FunDecl, Grouping, IVisitorExpr,
+    IVisitorStmt, If, Logical, Print, Return, Stmt, Unary, Var, VarDecl, While,
 };
 
 use super::interpreter::Interpreter;
@@ -210,9 +210,7 @@ impl<'a> IVisitorStmt<Result<Option<Stmt>, Error>> for Resolver<'a> {
             }) => {
                 condition.accept(self).unwrap();
                 branch_true.accept(self).unwrap();
-                //if Expr::Literal(Literal::Nil) != branch_false {
                 branch_false.accept(self).unwrap();
-                //}
                 Ok(None)
             }
             _ => Err(Error::new("Invalid statement".to_string())),
@@ -259,6 +257,17 @@ impl<'a> IVisitorStmt<Result<Option<Stmt>, Error>> for Resolver<'a> {
                 Ok(None)
             }
             _ => Err(Error::new("Invalid statement".to_string())),
+        }
+    }
+
+    fn visit_class(&mut self, stmt: &Stmt) -> Result<Option<Stmt>, Error> {
+        if let Stmt::ClassDecl(ClassDecl { name, methods: _ }) = stmt {
+            self.declare(&name.lexeme)?;
+            self.define(&name.lexeme);
+
+            Ok(None)
+        } else {
+            Err(Error::new("Invalid statement".to_string()))
         }
     }
 }

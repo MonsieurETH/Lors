@@ -36,8 +36,8 @@
 //logic_and      → equality ( "and" equality )* ;
 
 use crate::ast::{
-    Assign, Binary, Block, Call, Error, Expr, Expression, FunDecl, Grouping, If, Literal, Logical,
-    Print, Return, Stmt, Unary, Var, VarDecl, While,
+    Assign, Binary, Block, Call, ClassDecl, Error, Expr, Expression, FunDecl, Function, Grouping,
+    If, Literal, Logical, Print, Return, Stmt, Unary, Var, VarDecl, While,
 };
 use crate::lexer::{Token, TokenLiteral, TokenType};
 use crate::operators::Operator;
@@ -76,6 +76,8 @@ impl Parser {
             self.var_decl()
         } else if self.ismatch(&[TokenType::Fun])? {
             self.fun_decl("function")
+        } else if self.ismatch(&[TokenType::Class])? {
+            self.class_decl()
         } else {
             self.statement()
         }
@@ -142,6 +144,24 @@ impl Parser {
             name: name,
             parameters,
             body,
+        }))
+    }
+
+    fn class_decl(&mut self) -> Result<Stmt, Error> {
+        let name = self
+            .consume(TokenType::Identifier, "Expect class name.")?
+            .clone();
+        self.consume(TokenType::LeftBrace, "Expect '{' before class body.")?;
+
+        let mut methods: Vec<Function> = vec![];
+        while !self.check(&TokenType::RightBrace) && !self.is_at_end() {
+            methods.push(self.fun_decl("method")?.into());
+        }
+
+        self.consume(TokenType::RightBrace, "Expect '}' after class body.")?;
+        Ok(Stmt::ClassDecl(ClassDecl {
+            name: name,
+            methods,
         }))
     }
 

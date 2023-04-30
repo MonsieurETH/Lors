@@ -61,6 +61,13 @@ define_ast!(
             pub body: Vec<Stmt>,
             pub context: usize,
         },
+        Instance: struct {
+            pub class: Box<Class>,
+        },
+        Class: struct {
+            pub name: String,
+        },
+
     }
 );
 
@@ -97,6 +104,10 @@ define_ast!(
             pub keyword: Token,
             pub value: Expr,
         },
+        ClassDecl: struct {
+            pub name: Token,
+            pub methods: Vec<Function>,
+        }
     }
 );
 
@@ -111,6 +122,7 @@ impl Stmt {
             Stmt::While(_) => visitor.visit_while(&self),
             Stmt::FunDecl(_) => visitor.visit_fun_decl(&self),
             Stmt::Return(_) => visitor.visit_return(&self),
+            Stmt::ClassDecl(_) => visitor.visit_class(&self),
         }
     }
 }
@@ -168,7 +180,6 @@ impl Function {
 
         for (i, arg) in args.into_iter().enumerate() {
             let Var::Token(token) = parameters.get(i).unwrap();
-            //env.define(&token.lexeme.as_str(), arg);
             interpreter.define_symbol(token.lexeme.as_str(), arg);
         }
         //globals here
@@ -199,6 +210,23 @@ impl Function {
             _ => panic!("Expected function"),
         }
     }
+
+    pub fn arity(&self) -> usize {
+        self.parameters.len()
+    }
+}
+
+impl Class {
+    pub fn execute_call(self, interpreter: &mut Interpreter, args: Vec<Expr>) -> Expr {
+        let instance = Expr::Instance(Instance {
+            class: Box::new(self),
+        });
+        instance
+    }
+
+    pub fn arity(&self) -> usize {
+        0
+    }
 }
 
 pub trait IVisitorExpr<T> {
@@ -221,6 +249,7 @@ pub trait IVisitorStmt<T> {
     fn visit_while(&mut self, stmt: &Stmt) -> T;
     fn visit_fun_decl(&mut self, stmt: &Stmt) -> T;
     fn visit_return(&mut self, stmt: &Stmt) -> T;
+    fn visit_class(&mut self, stmt: &Stmt) -> T;
 
     //fn execute_block(
     //    &mut self,
