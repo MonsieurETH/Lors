@@ -95,7 +95,8 @@ impl<'a> Resolver<'a> {
     }
 
     pub fn resolve_local(&mut self, expr: &mut Expr, name: &str) {
-        for (i, scope) in self.environments.iter().rev().enumerate() {
+        for (i, scope) in self.environments.iter().enumerate().rev() {
+            //let pos = self.environments.len() - 1 - i;
             if scope.exists(name) {
                 self.interpreter
                     .resolve(expr, self.environments.len() - 1 - i);

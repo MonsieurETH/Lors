@@ -46,10 +46,10 @@ impl Interpreter {
         }
     }
 
-    pub fn new_environment(&mut self) -> usize {
+    pub fn new_environment(&mut self) {
         let env = Environment::new();
         self.environments.push(env);
-        self.environments.len() - 1
+        self.actual_env_number = self.environments.len() - 1;
     }
 
     pub fn get_env_number(&self) -> usize {
@@ -60,9 +60,9 @@ impl Interpreter {
         self.actual_env_number = env_number;
     }
 
-    pub fn destroy_environment(&mut self, pos: usize) {
-        self.environments.remove(pos);
-    }
+    //pub fn destroy_environment(&mut self, pos: usize) {
+    //    self.environments.remove(pos);
+    //}
 
     pub fn define_symbol(&mut self, name: &str, value: Expr) {
         self.environments
@@ -75,7 +75,7 @@ impl Interpreter {
         let env = self
             .environments
             .iter()
-            .nth(self.actual_env_number + 1 - pos)
+            .nth(self.actual_env_number + 1 - pos) // BAD INDEX
             .unwrap();
         let symbol = env.retrieve(name);
         if symbol.is_some() {
@@ -212,8 +212,8 @@ impl IVisitorStmt<Result<Option<Stmt>, Error>> for Interpreter {
 
     fn visit_block(&mut self, stmt: &Stmt) -> Result<Option<Stmt>, Error> {
         if let Stmt::Block(Block { stmts }) = stmt {
-            let new_env = self.new_environment();
-            self.execute_block(stmts, new_env)?;
+            self.new_environment();
+            self.execute_block(stmts, self.get_env_number())?;
             //self.destroy_environment(new_env);
             Ok(None)
         } else {
