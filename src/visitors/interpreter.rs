@@ -1,5 +1,6 @@
 use std::collections::hash_map::DefaultHasher;
 use std::collections::HashMap;
+use std::env;
 use std::{hash::Hash, hash::Hasher};
 
 use crate::ast::{
@@ -8,15 +9,24 @@ use crate::ast::{
 };
 use crate::operators::Operator;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct Environment {
     symbol_table: HashMap<String, Expr>,
+    parent: Option<usize>,
 }
 
 impl Environment {
     pub fn new() -> Self {
         Environment {
             symbol_table: HashMap::new(),
+            parent: None,
+        }
+    }
+
+    pub fn new_with_parent(parent: usize) -> Self {
+        Environment {
+            symbol_table: HashMap::new(),
+            parent: Some(parent),
         }
     }
 
@@ -47,7 +57,13 @@ impl Interpreter {
     }
 
     pub fn new_environment(&mut self) {
-        let env = Environment::new();
+        let env = Environment::new_with_parent(self.actual_env_number);
+        self.environments.push(env);
+        self.actual_env_number = self.environments.len() - 1;
+    }
+
+    pub fn new_environment_with_parent(&mut self, parent_env_number: usize) {
+        let env = Environment::new_with_parent(parent_env_number);
         self.environments.push(env);
         self.actual_env_number = self.environments.len() - 1;
     }
@@ -60,9 +76,10 @@ impl Interpreter {
         self.actual_env_number = env_number;
     }
 
-    //pub fn destroy_environment(&mut self, pos: usize) {
-    //    self.environments.remove(pos);
-    //}
+    pub fn drop_environment(&mut self) {
+        self.environments.pop();
+        self.actual_env_number -= 1;
+    }
 
     pub fn define_symbol(&mut self, name: &str, value: Expr) {
         self.environments
@@ -75,7 +92,7 @@ impl Interpreter {
         let env = self
             .environments
             .iter()
-            .nth(self.actual_env_number + 1 - pos) // BAD INDEX
+            .nth(self.actual_env_number - pos) // BAD INDEX
             .unwrap();
         let symbol = env.retrieve(name);
         if symbol.is_some() {
@@ -98,7 +115,7 @@ impl Interpreter {
         let env = self
             .environments
             .iter_mut()
-            .nth(self.actual_env_number + 1 - pos)
+            .nth(self.actual_env_number - pos)
             .unwrap();
         env.define(name, value);
     }
@@ -143,6 +160,31 @@ impl Interpreter {
     pub fn resolve(&mut self, expr: &mut Expr, depth: usize) {
         let hash = Self::calculate_hash(expr);
         self.locals.insert(hash, depth);
+    }
+
+    pub fn execute_block_context(
+        &mut self,
+        stmts: &Vec<Stmt>,
+        context: usize,
+    ) -> Result<Option<Stmt>, Error> {
+        let actual_context = self.get_env_number();
+        self.set_env_number(context);
+
+        let mut result = None;
+        for stmt in stmts {
+            let accepted_stmt = stmt.accept(self).unwrap();
+            match accepted_stmt {
+                Some(s) => {
+                    result = Some(s);
+                    break;
+                }
+                None => continue,
+            }
+        }
+
+        self.set_env_number(actual_context);
+
+        Ok(result)
     }
 }
 
@@ -213,33 +255,12 @@ impl IVisitorStmt<Result<Option<Stmt>, Error>> for Interpreter {
     fn visit_block(&mut self, stmt: &Stmt) -> Result<Option<Stmt>, Error> {
         if let Stmt::Block(Block { stmts }) = stmt {
             self.new_environment();
-            self.execute_block(stmts, self.get_env_number())?;
-            //self.destroy_environment(new_env);
+            self.execute_block_context(stmts, self.get_env_number())?;
+            self.drop_environment();
             Ok(None)
         } else {
             Err(Error::new("Invalid statement".to_string()))
         }
-    }
-
-    fn execute_block(&mut self, stmts: &Vec<Stmt>, context: usize) -> Result<Option<Stmt>, Error> {
-        let actual_context = self.get_env_number();
-        self.set_env_number(context);
-
-        let mut result = None;
-        for stmt in stmts {
-            let accepted_stmt = stmt.accept(self).unwrap();
-            match accepted_stmt {
-                Some(s) => {
-                    result = Some(s);
-                    break;
-                }
-                None => continue,
-            }
-        }
-
-        self.set_env_number(actual_context);
-
-        Ok(result)
     }
 
     fn visit_fun_decl(&mut self, stmt: &Stmt) -> Result<Option<Stmt>, Error> {

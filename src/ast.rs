@@ -2,7 +2,7 @@ use ordered_float::OrderedFloat;
 
 use crate::lexer::Token;
 use crate::operators::Operator;
-use crate::visitors::interpreter::Interpreter;
+use crate::visitors::interpreter::{Environment, Interpreter};
 
 macro_rules! define_ast {
     (pub enum $root:ident { $($n:ident: $t:ident $b:tt),* $(,)? }) => {
@@ -164,15 +164,20 @@ impl Function {
             context,
         } = self;
 
-        interpreter.new_environment();
+        interpreter.new_environment_with_parent(context);
 
         for (i, arg) in args.into_iter().enumerate() {
             let Var::Token(token) = parameters.get(i).unwrap();
+            //env.define(&token.lexeme.as_str(), arg);
             interpreter.define_symbol(token.lexeme.as_str(), arg);
         }
         //globals here
 
-        let res: Option<Stmt> = interpreter.execute_block(&body, context).unwrap();
+        let res: Option<Stmt> = interpreter
+            .execute_block_context(&body, interpreter.get_env_number())
+            .unwrap();
+
+        interpreter.drop_environment();
         match res {
             Some(Stmt::Return(Return { keyword: _, value })) => value,
             _ => Expr::Literal(Literal::Nil),
@@ -217,11 +222,11 @@ pub trait IVisitorStmt<T> {
     fn visit_fun_decl(&mut self, stmt: &Stmt) -> T;
     fn visit_return(&mut self, stmt: &Stmt) -> T;
 
-    fn execute_block(
-        &mut self,
-        stmts: &Vec<Stmt>,
-        context_number: usize,
-    ) -> Result<Option<Stmt>, Error>;
+    //fn execute_block(
+    //    &mut self,
+    //    stmts: &Vec<Stmt>,
+    //    context: Environment,
+    //) -> Result<Option<Stmt>, Error>;
 }
 
 #[derive(Debug)]

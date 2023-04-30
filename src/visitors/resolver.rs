@@ -6,7 +6,7 @@ use crate::ast::{
     If, Logical, Print, Return, Stmt, Unary, Var, VarDecl, While,
 };
 
-use super::interpreter::{self, Interpreter};
+use super::interpreter::Interpreter;
 
 #[derive(Debug, PartialEq)]
 pub struct Scope {
@@ -27,7 +27,7 @@ impl Scope {
     }
 
     pub fn retrieve(&self, name: &str) -> Option<bool> {
-        Some(true) //self.symbol_table.get(name).cloned()
+        self.symbol_table.get(name).cloned()
     }
 
     pub fn exists(&self, name: &str) -> bool {
@@ -90,14 +90,35 @@ impl<'a> Resolver<'a> {
         self.environments.last_mut().unwrap().define(name, true);
     }
 
+    //pub fn get(&self, name: &str) -> Option<bool> {
+    //    self.environments.last().unwrap().retrieve(name)
+    //}
+
     pub fn get(&self, name: &str) -> Option<bool> {
-        self.environments.last().unwrap().retrieve(name)
+        for env in self.environments.iter().rev() {
+            let symbol = env.retrieve(name);
+            if symbol.is_some() {
+                return symbol;
+            }
+        }
+        None
+        //Err(Error::new(format!("{:?} is not defined.", name)))
     }
 
-    pub fn resolve_local(&mut self, expr: &mut Expr, name: &str) {
+    /*pub fn resolve_local(&mut self, expr: &mut Expr, name: &str) {
         for (i, scope) in self.environments.iter().enumerate().rev() {
             //let pos = self.environments.len() - 1 - i;
             if scope.exists(name) {
+                self.interpreter
+                    .resolve(expr, self.environments.len() - 1 - i);
+                return;
+            }
+        }
+    }*/
+
+    pub fn resolve_local(&mut self, expr: &mut Expr, name: &str) {
+        for i in (0..self.environments.len()).rev() {
+            if let Some(_) = self.environments[i].symbol_table.get(name) {
                 self.interpreter
                     .resolve(expr, self.environments.len() - 1 - i);
                 return;
@@ -236,14 +257,6 @@ impl<'a> IVisitorStmt<Result<Option<Stmt>, Error>> for Resolver<'a> {
             }
             _ => Err(Error::new("Invalid statement".to_string())),
         }
-    }
-
-    fn execute_block(
-        &mut self,
-        stmts: &Vec<Stmt>,
-        context_number: usize,
-    ) -> Result<Option<Stmt>, Error> {
-        Ok(None)
     }
 }
 
