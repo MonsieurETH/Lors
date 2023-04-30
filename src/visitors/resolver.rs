@@ -2,8 +2,8 @@ use core::panic;
 use std::collections::HashMap;
 
 use crate::ast::{
-    Assign, Binary, Block, Error, Expr, FunDecl, Grouping, IVisitorExpr, IVisitorStmt, If, Logical,
-    Return, Stmt, Unary, Var, VarDecl, While,
+    Assign, Binary, Block, Error, Expr, Expression, FunDecl, Grouping, IVisitorExpr, IVisitorStmt,
+    If, Logical, Print, Return, Stmt, Unary, Var, VarDecl, While,
 };
 
 use super::interpreter::{self, Interpreter};
@@ -101,9 +101,6 @@ impl<'a> Resolver<'a> {
                     .resolve(expr, self.environments.len() - 1 - i);
                 return;
             }
-            if i == 0 {
-                panic!("Variable not found");
-            }
         }
     }
 
@@ -111,7 +108,7 @@ impl<'a> Resolver<'a> {
         if let Stmt::FunDecl(FunDecl {
             name,
             parameters,
-            body: _,
+            body,
         }) = stmt
         {
             let enclosing_function = self.current_function.clone();
@@ -123,7 +120,9 @@ impl<'a> Resolver<'a> {
                 self.define(&parameter.lexeme);
             }
 
-            stmt.accept(self);
+            for stmt in body {
+                stmt.accept(self).unwrap();
+            }
             self.end_scope();
             self.current_function = enclosing_function;
         }
@@ -132,11 +131,24 @@ impl<'a> Resolver<'a> {
 
 impl<'a> IVisitorStmt<Result<Option<Stmt>, Error>> for Resolver<'a> {
     fn visit_expr(&mut self, stmt: &Stmt) -> Result<Option<Stmt>, Error> {
-        stmt.accept(self)
+        if let Stmt::Expression(Expression { expr }) = stmt {
+            match expr.accept(self) {
+                Ok(_) => Ok(None),
+                Err(e) => Err(e),
+            }
+        } else {
+            Err(Error::new("Invalid statement".to_string()))
+        }
     }
 
     fn visit_print(&mut self, stmt: &Stmt) -> Result<Option<Stmt>, Error> {
-        stmt.accept(self)
+        match stmt {
+            Stmt::Print(Print { expr }) => match expr.accept(self) {
+                Ok(_) => Ok(None),
+                Err(e) => Err(e),
+            },
+            _ => Err(Error::new("Invalid statement".to_string())),
+        }
     }
 
     fn visit_var_decl(&mut self, stmt: &Stmt) -> Result<Option<Stmt>, Error> {

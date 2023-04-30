@@ -48,10 +48,8 @@ fn run_test(path: &String) {
         }
     }
 
-    {
-        let res = apply_visitor(&mut interpreter, &ast);
-        let only_err = ast.iter().filter(|result| result.is_err());
-    }
+    apply_visitor(&mut interpreter, &ast);
+    let only_err = ast.iter().filter(|result| result.is_err());
 }
 
 type ResultStmt = Result<Option<Stmt>, Error>;
@@ -77,23 +75,22 @@ fn run(source: &String) -> bool {
 
     let mut parser: Parser = Parser::new(lexer.tokens);
     let ast = parser.parse();
+
+    let mut interpreter: Interpreter = Interpreter::new();
+
     let only_ok = ast.iter().filter(|result| result.is_ok());
     if only_ok.count() == ast.len() {
-        let mut visitor = Interpreter::new();
-        for stmt in ast {
-            let value = stmt.unwrap().accept(&mut visitor);
-            match value {
-                Err(Error { msg }) => println!("{:?}", msg),
-                Ok(Some(v)) => println!("{:?}", v),
-                _ => continue,
-            }
-        }
+        let mut resolver: Resolver = Resolver::new(&mut interpreter);
+        apply_visitor(&mut resolver, &ast);
     } else {
         let only_err = ast.iter().filter(|result| result.is_err());
         for err in only_err {
             println!("{:?}", err.as_ref().unwrap_err());
         }
     }
+
+    apply_visitor(&mut interpreter, &ast);
+    let only_err = ast.iter().filter(|result| result.is_err());
 
     false
 }

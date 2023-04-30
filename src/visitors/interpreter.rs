@@ -153,12 +153,9 @@ impl IVisitorStmt<Result<Option<Stmt>, Error>> for Interpreter {
                 Ok(_) => Ok(None),
                 Err(e) => Err(e),
             }
-
-            //Ok(None)
         } else {
             Err(Error::new("Invalid statement".to_string()))
         }
-        //Ok(None)
     }
 
     fn visit_print(&mut self, stmt: &Stmt) -> Result<Option<Stmt>, Error> {
