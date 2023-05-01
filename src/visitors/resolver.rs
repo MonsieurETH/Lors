@@ -2,8 +2,8 @@ use core::panic;
 use std::collections::HashMap;
 
 use crate::ast::{
-    Assign, Binary, Block, ClassDecl, Error, Expr, Expression, FunDecl, Grouping, IVisitorExpr,
-    IVisitorStmt, If, Logical, Print, Return, Stmt, Unary, Var, VarDecl, While,
+    Assign, Binary, Block, ClassDecl, Error, Expr, Expression, FunDecl, Get, Grouping,
+    IVisitorExpr, IVisitorStmt, If, Logical, Print, Return, Set, Stmt, Unary, Var, VarDecl, While,
 };
 
 use super::interpreter::Interpreter;
@@ -45,6 +45,7 @@ pub struct Resolver<'a> {
 pub enum FunctionType {
     None,
     Function,
+    Method,
 }
 
 impl<'a> Resolver<'a> {
@@ -261,9 +262,13 @@ impl<'a> IVisitorStmt<Result<Option<Stmt>, Error>> for Resolver<'a> {
     }
 
     fn visit_class(&mut self, stmt: &Stmt) -> Result<Option<Stmt>, Error> {
-        if let Stmt::ClassDecl(ClassDecl { name, methods: _ }) = stmt {
+        if let Stmt::ClassDecl(ClassDecl { name, methods }) = stmt {
             self.declare(&name.lexeme)?;
             self.define(&name.lexeme);
+
+            for method in methods {
+                self.resolve_function(method, FunctionType::Method)?;
+            }
 
             Ok(None)
         } else {
@@ -288,7 +293,7 @@ impl<'a> IVisitorExpr<Result<Option<Expr>, Error>> for Resolver<'a> {
         }
     }
 
-    fn visit_literal(&mut self, _expr: &Expr) -> Result<Option<Expr>, Error> {
+    fn visit_literal(&mut self, _: &Expr) -> Result<Option<Expr>, Error> {
         Ok(None)
     }
 
@@ -308,7 +313,7 @@ impl<'a> IVisitorExpr<Result<Option<Expr>, Error>> for Resolver<'a> {
     fn visit_binary(&mut self, expr: &Expr) -> Result<Option<Expr>, Error> {
         if let Expr::Binary(Binary {
             left,
-            operator: _operator,
+            operator: _,
             right,
         }) = expr
         {
@@ -342,7 +347,7 @@ impl<'a> IVisitorExpr<Result<Option<Expr>, Error>> for Resolver<'a> {
     fn visit_logical(&mut self, expr: &Expr) -> Result<Option<Expr>, Error> {
         if let Expr::Logical(Logical {
             left,
-            operator: _operator,
+            operator: _,
             right,
         }) = expr
         {
@@ -357,11 +362,34 @@ impl<'a> IVisitorExpr<Result<Option<Expr>, Error>> for Resolver<'a> {
     fn visit_call(&mut self, expr: &Expr) -> Result<Option<Expr>, Error> {
         if let Expr::Call(call) = expr {
             call.callee.accept(self)?;
-            let _args: Vec<Expr> = call
+            let _: Vec<Expr> = call
                 .arguments
                 .iter()
                 .map(|arg| arg.accept(self).unwrap().unwrap()) // ?
                 .collect();
+            Ok(None)
+        } else {
+            Err(Error::new("Invalid statement".to_string()))
+        }
+    }
+
+    fn visit_get(&mut self, expr: &Expr) -> Result<Option<Expr>, Error> {
+        if let Expr::Get(Get { object, name: _ }) = expr {
+            object.accept(self)
+        } else {
+            Err(Error::new("Invalid statement".to_string()))
+        }
+    }
+
+    fn visit_set(&mut self, expr: &Expr) -> Result<Option<Expr>, Error> {
+        if let Expr::Set(Set {
+            object,
+            name: _,
+            value,
+        }) = expr
+        {
+            object.accept(self)?;
+            value.accept(self)?;
             Ok(None)
         } else {
             Err(Error::new("Invalid statement".to_string()))

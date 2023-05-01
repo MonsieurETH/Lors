@@ -36,8 +36,8 @@
 //logic_and      → equality ( "and" equality )* ;
 
 use crate::ast::{
-    Assign, Binary, Block, Call, ClassDecl, Error, Expr, Expression, FunDecl, Function, Grouping,
-    If, Literal, Logical, Print, Return, Stmt, Unary, Var, VarDecl, While,
+    Assign, Binary, Block, Call, ClassDecl, Error, Expr, Expression, FunDecl, Function, Get,
+    Grouping, If, Literal, Logical, Print, Return, Set, Stmt, Unary, Var, VarDecl, While,
 };
 use crate::lexer::{Token, TokenLiteral, TokenType};
 use crate::operators::Operator;
@@ -153,7 +153,7 @@ impl Parser {
             .clone();
         self.consume(TokenType::LeftBrace, "Expect '{' before class body.")?;
 
-        let mut methods: Vec<Function> = vec![];
+        let mut methods: Vec<Stmt> = vec![];
         while !self.check(&TokenType::RightBrace) && !self.is_at_end() {
             methods.push(self.fun_decl("method")?.into());
         }
@@ -335,6 +335,11 @@ impl Parser {
                     var,
                     expr: Box::new(value),
                 })),
+                Expr::Get(Get { object, name }) => Ok(Expr::Set(Set {
+                    object,
+                    name,
+                    value: Box::new(value),
+                })),
                 _ => Err(Error {
                     msg: format!("Error at '=': Invalid assignment target.",),
                 }),
@@ -462,6 +467,13 @@ impl Parser {
         loop {
             if self.ismatch(&[TokenType::LeftParen])? {
                 expr = self.finish_call(expr)?;
+            } else if self.ismatch(&[TokenType::Dot])? {
+                let name =
+                    self.consume(TokenType::Identifier, "Expect property name after '.'.")?;
+                expr = Expr::Get(Get {
+                    object: Box::new(expr),
+                    name: name.clone(),
+                });
             } else {
                 break;
             }

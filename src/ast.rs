@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 use ordered_float::OrderedFloat;
 
 use crate::lexer::Token;
@@ -63,10 +65,21 @@ define_ast!(
         },
         Instance: struct {
             pub class: Box<Class>,
+            pub fields: BTreeMap<String, Expr>,
         },
         Class: struct {
             pub name: String,
+            pub methods: BTreeMap<String, Function>,
         },
+        Get: struct {
+            pub object: Box<Expr>,
+            pub name: Token,
+        },
+        Set: struct {
+            pub object: Box<Expr>,
+            pub name: Token,
+            pub value: Box<Expr>,
+        }
 
     }
 );
@@ -106,7 +119,7 @@ define_ast!(
         },
         ClassDecl: struct {
             pub name: Token,
-            pub methods: Vec<Function>,
+            pub methods: Vec<Stmt>,
         }
     }
 );
@@ -138,6 +151,8 @@ impl Expr {
             Expr::Assign(_) => visitor.visit_assign(&self),
             Expr::Logical(_) => visitor.visit_logical(&self),
             Expr::Call(_) => visitor.visit_call(&self),
+            Expr::Get(_) => visitor.visit_get(&self),
+            Expr::Set(_) => visitor.visit_set(&self),
             _ => panic!("Invalid expression"),
         }
     }
@@ -185,7 +200,7 @@ impl Function {
         //globals here
 
         let res: Option<Stmt> = interpreter
-            .execute_block_context(&body, interpreter.get_env_number())
+            .execute_block(&body, interpreter.get_env_number())
             .unwrap();
 
         interpreter.drop_environment();
@@ -220,12 +235,38 @@ impl Class {
     pub fn execute_call(self, interpreter: &mut Interpreter, args: Vec<Expr>) -> Expr {
         let instance = Expr::Instance(Instance {
             class: Box::new(self),
+            fields: BTreeMap::new(),
         });
         instance
     }
 
+    pub fn find_method(&self, name: &str) -> Result<Option<Function>, Error> {
+        Ok(self.methods.get(name).cloned())
+    }
+
     pub fn arity(&self) -> usize {
         0
+    }
+}
+
+impl Instance {
+    pub fn get_field(&self, name: &str) -> Result<Expr, Error> {
+        match self.fields.get(name) {
+            Some(expr) => Ok(expr.clone()),
+            None => {
+                let method = self.class.find_method(name);
+                match method {
+                    Ok(Some(method)) => Ok(Expr::Function(method)),
+                    _ => Err(Error {
+                        msg: format!("Undefined property '{:?}'.", name),
+                    }),
+                }
+            }
+        }
+    }
+
+    pub fn set_field(&mut self, name: &str, value: Expr) {
+        self.fields.insert(name.to_string(), value);
     }
 }
 
@@ -238,6 +279,8 @@ pub trait IVisitorExpr<T> {
     fn visit_assign(&mut self, expr: &Expr) -> T;
     fn visit_logical(&mut self, expr: &Expr) -> T;
     fn visit_call(&mut self, expr: &Expr) -> T;
+    fn visit_get(&mut self, expr: &Expr) -> T;
+    fn visit_set(&mut self, expr: &Expr) -> T;
 }
 
 pub trait IVisitorStmt<T> {
@@ -250,12 +293,6 @@ pub trait IVisitorStmt<T> {
     fn visit_fun_decl(&mut self, stmt: &Stmt) -> T;
     fn visit_return(&mut self, stmt: &Stmt) -> T;
     fn visit_class(&mut self, stmt: &Stmt) -> T;
-
-    //fn execute_block(
-    //    &mut self,
-    //    stmts: &Vec<Stmt>,
-    //    context: Environment,
-    //) -> Result<Option<Stmt>, Error>;
 }
 
 #[derive(Debug)]

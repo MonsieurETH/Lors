@@ -1,11 +1,11 @@
 use std::collections::hash_map::DefaultHasher;
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::{hash::Hash, hash::Hasher};
 
 use crate::ast::{
-    Assign, Binary, Block, Class, ClassDecl, Error, Expr, Expression, FunDecl, Function, Grouping,
-    IVisitorExpr, IVisitorStmt, If, Literal, Logical, Print, Return, Stmt, Unary, Var, VarDecl,
-    While,
+    Assign, Binary, Block, Class, ClassDecl, Error, Expr, Expression, FunDecl, Function, Get,
+    Grouping, IVisitorExpr, IVisitorStmt, If, Instance, Literal, Logical, Print, Return, Set, Stmt,
+    Unary, Var, VarDecl, While,
 };
 use crate::operators::Operator;
 
@@ -162,7 +162,7 @@ impl Interpreter {
         self.locals.insert(hash, depth);
     }
 
-    pub fn execute_block_context(
+    pub fn execute_block(
         &mut self,
         stmts: &Vec<Stmt>,
         context: usize,
@@ -255,7 +255,7 @@ impl IVisitorStmt<Result<Option<Stmt>, Error>> for Interpreter {
     fn visit_block(&mut self, stmt: &Stmt) -> Result<Option<Stmt>, Error> {
         if let Stmt::Block(Block { stmts }) = stmt {
             self.new_environment();
-            self.execute_block_context(stmts, self.get_env_number())?;
+            self.execute_block(stmts, self.get_env_number())?;
             self.drop_environment();
             Ok(None)
         } else {
@@ -293,14 +293,15 @@ impl IVisitorStmt<Result<Option<Stmt>, Error>> for Interpreter {
     }
 
     fn visit_class(&mut self, stmt: &Stmt) -> Result<Option<Stmt>, Error> {
-        if let Stmt::ClassDecl(ClassDecl {
-            name,
-            methods: _methods,
-        }) = stmt
-        {
+        if let Stmt::ClassDecl(ClassDecl { name, methods }) = stmt {
+            let mut meths = BTreeMap::new();
+            for method in methods {
+                let fun: Function = Function::from_stmt(method.clone(), self.get_env_number());
+                meths.insert(fun.name.clone(), fun);
+            }
             let class: Class = Class {
                 name: name.lexeme.clone(),
-                //methods,
+                methods: meths,
             };
             self.define_symbol(&name.lexeme.as_str(), Expr::Class(class));
 
@@ -446,10 +447,46 @@ impl IVisitorExpr<Result<Option<Expr>, Error>> for Interpreter {
                     }
                 }
                 Expr::Class(class) => {
-                    let Class { name: _name } = &class;
+                    //let Class {
+                    //    name: _name,
+                    //    methods,
+                    //} = &class;
                     Ok(Some(class.execute_call(self, args)))
                 }
                 _ => Err(Error::new("Invalid call".to_string())),
+            }
+        } else {
+            Err(Error::new("Invalid statement".to_string()))
+        }
+    }
+
+    fn visit_get(&mut self, expr: &Expr) -> Result<Option<Expr>, Error> {
+        if let Expr::Get(Get { object, name }) = expr {
+            let accepted_object = object.accept(self).unwrap().unwrap();
+            match accepted_object {
+                Expr::Instance(instance) => Ok(Some(instance.get_field(name.lexeme.as_str())?)),
+                _ => Err(Error::new("Only instances have properties.".to_string())),
+            }
+        } else {
+            Err(Error::new("Invalid statement".to_string()))
+        }
+    }
+
+    fn visit_set(&mut self, expr: &Expr) -> Result<Option<Expr>, Error> {
+        if let Expr::Set(Set {
+            object,
+            name,
+            value,
+        }) = expr
+        {
+            let accepted_object = object.accept(self).unwrap().unwrap();
+            match accepted_object {
+                Expr::Instance(mut instance) => {
+                    let value = value.accept(self).unwrap().unwrap();
+                    instance.set_field(&name.lexeme, value);
+                    Ok(None)
+                }
+                _ => Err(Error::new("Only instances have fields.".to_string())),
             }
         } else {
             Err(Error::new("Invalid statement".to_string()))
