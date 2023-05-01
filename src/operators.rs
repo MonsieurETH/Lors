@@ -42,25 +42,6 @@ impl Operator {
         }
     }
 
-    /*pub fn to_string(&self) -> String {
-        match self {
-            Operator::Minus => String::from("-"),
-            Operator::Plus => String::from("+"),
-            Operator::Slash => String::from("/"),
-            Operator::Star => String::from("*"),
-            Operator::Bang => String::from("!"),
-            Operator::BangEqual => String::from("!="),
-            Operator::Equal => String::from("="),
-            Operator::EqualEqual => String::from("=="),
-            Operator::Greater => String::from(">"),
-            Operator::GreaterEqual => String::from(">="),
-            Operator::Less => String::from("<"),
-            Operator::LessEqual => String::from("<="),
-            Operator::Or => String::from("or"),
-            Operator::And => String::from("and"),
-        }
-    }*/
-
     pub fn unary(self, right: Expr) -> Result<Option<Expr>, Error> {
         match self {
             Operator::Minus => self.minus(right),

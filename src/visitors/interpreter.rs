@@ -4,8 +4,8 @@ use std::{hash::Hash, hash::Hasher};
 
 use crate::ast::{
     Assign, Binary, Block, Class, ClassDecl, Error, Expr, Expression, FunDecl, Function, Get,
-    Grouping, IVisitorExpr, IVisitorStmt, If, Instance, Literal, Logical, Print, Return, Set, Stmt,
-    Unary, Var, VarDecl, While,
+    Grouping, IVisitorExpr, IVisitorStmt, If, Literal, Logical, Print, Return, Set, Stmt, Unary,
+    Var, VarDecl, While,
 };
 use crate::operators::Operator;
 
@@ -92,7 +92,7 @@ impl Interpreter {
         let env = self
             .environments
             .iter()
-            .nth(self.actual_env_number - pos) // BAD INDEX
+            .nth(self.actual_env_number - pos)
             .unwrap();
         let symbol = env.retrieve(name);
         if symbol.is_some() {
@@ -446,13 +446,7 @@ impl IVisitorExpr<Result<Option<Expr>, Error>> for Interpreter {
                         Ok(Some(fun.execute_call(self, args)))
                     }
                 }
-                Expr::Class(class) => {
-                    //let Class {
-                    //    name: _name,
-                    //    methods,
-                    //} = &class;
-                    Ok(Some(class.execute_call(self, args)))
-                }
+                Expr::Class(class) => Ok(Some(class.execute_call())), //Ok(Some(class.execute_call(self, args))),
                 _ => Err(Error::new("Invalid call".to_string())),
             }
         } else {

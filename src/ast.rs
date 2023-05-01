@@ -197,7 +197,7 @@ impl Function {
             let Var::Token(token) = parameters.get(i).unwrap();
             interpreter.define_symbol(token.lexeme.as_str(), arg);
         }
-        //globals here
+        //TODO globals here
 
         let res: Option<Stmt> = interpreter
             .execute_block(&body, interpreter.get_env_number())
@@ -232,7 +232,7 @@ impl Function {
 }
 
 impl Class {
-    pub fn execute_call(self, interpreter: &mut Interpreter, args: Vec<Expr>) -> Expr {
+    pub fn execute_call(self) -> Expr {
         let instance = Expr::Instance(Instance {
             class: Box::new(self),
             fields: BTreeMap::new(),
@@ -245,7 +245,7 @@ impl Class {
     }
 
     pub fn arity(&self) -> usize {
-        0
+        self.methods.len()
     }
 }
 

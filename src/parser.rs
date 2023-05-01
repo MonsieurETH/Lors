@@ -1,43 +1,6 @@
-//expression     → equality ;
-//equality       → comparison ( ( "!=" | "==" ) comparison )* ;
-//comparison     → term ( ( ">" | ">=" | "<" | "<=" ) term )* ;
-//term           → factor ( ( "-" | "+" ) factor )* ;
-//factor         → unary ( ( "/" | "*" ) unary )* ;
-//unary          → ( "!" | "-" ) unary
-//               | primary ;
-//primary        → NUMBER | STRING | "true" | "false" | "nil"
-//               | "(" expression ")" ;
-
-//program        → statement* Eof ;
-//statement      → exprStmt | printStmt ;
-//exprStmt       → expression ";" ;
-//printStms      → print expression ";" ;
-
-//expression     → assignment ;
-//assignment     → IDENTIFIER "=" assignment
-//               | equality ;
-
-//statement      → exprStmt
-//              | printStmt
-//              | block ;
-//block          → "{" declaration* "}" ;
-
-//statement      → exprStmt
-//               | ifStmt
-//               | printStmt
-//               | block ;
-//ifStmt         → "if" "(" expression ")" statement
-//               ( "else" statement )? ;
-
-//expression     → assignment ;
-//assignment     → IDENTIFIER "=" assignment
-//                  | logic_or ;
-//logic_or       → logic_and ( "or" logic_and )* ;
-//logic_and      → equality ( "and" equality )* ;
-
 use crate::ast::{
-    Assign, Binary, Block, Call, ClassDecl, Error, Expr, Expression, FunDecl, Function, Get,
-    Grouping, If, Literal, Logical, Print, Return, Set, Stmt, Unary, Var, VarDecl, While,
+    Assign, Binary, Block, Call, ClassDecl, Error, Expr, Expression, FunDecl, Get, Grouping, If,
+    Literal, Logical, Print, Return, Set, Stmt, Unary, Var, VarDecl, While,
 };
 use crate::lexer::{Token, TokenLiteral, TokenType};
 use crate::operators::Operator;
