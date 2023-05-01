@@ -4,7 +4,7 @@ use ordered_float::OrderedFloat;
 
 use crate::lexer::Token;
 use crate::operators::Operator;
-use crate::visitors::interpreter::Interpreter;
+use crate::visitors::interpreter::{Environment, Interpreter};
 
 macro_rules! define_ast {
     (pub enum $root:ident { $($n:ident: $t:ident $b:tt),* $(,)? }) => {
@@ -79,6 +79,9 @@ define_ast!(
             pub object: Box<Expr>,
             pub name: Token,
             pub value: Box<Expr>,
+        },
+        This: struct {
+            pub keyword: Token,
         }
 
     }
@@ -153,6 +156,7 @@ impl Expr {
             Expr::Call(_) => visitor.visit_call(&self),
             Expr::Get(_) => visitor.visit_get(&self),
             Expr::Set(_) => visitor.visit_set(&self),
+            Expr::This(_) => visitor.visit_this(&self),
             _ => panic!("Invalid expression"),
         }
     }
@@ -229,6 +233,10 @@ impl Function {
     pub fn arity(&self) -> usize {
         self.parameters.len()
     }
+
+    pub fn bind(self, instance: &Instance) -> Function {
+        todo!()
+    }
 }
 
 impl Class {
@@ -256,7 +264,7 @@ impl Instance {
             None => {
                 let method = self.class.find_method(name);
                 match method {
-                    Ok(Some(method)) => Ok(Expr::Function(method)),
+                    Ok(Some(method)) => Ok(Expr::Function(method.bind(self))),
                     _ => Err(Error {
                         msg: format!("Undefined property '{:?}'.", name),
                     }),
@@ -281,6 +289,7 @@ pub trait IVisitorExpr<T> {
     fn visit_call(&mut self, expr: &Expr) -> T;
     fn visit_get(&mut self, expr: &Expr) -> T;
     fn visit_set(&mut self, expr: &Expr) -> T;
+    fn visit_this(&mut self, expr: &Expr) -> T;
 }
 
 pub trait IVisitorStmt<T> {

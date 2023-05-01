@@ -1,6 +1,6 @@
 use crate::ast::{
     Assign, Binary, Block, Call, ClassDecl, Error, Expr, Expression, FunDecl, Get, Grouping, If,
-    Literal, Logical, Print, Return, Set, Stmt, Unary, Var, VarDecl, While,
+    Literal, Logical, Print, Return, Set, Stmt, This, Unary, Var, VarDecl, While,
 };
 use crate::lexer::{Token, TokenLiteral, TokenType};
 use crate::operators::Operator;
@@ -488,6 +488,10 @@ impl Parser {
 
             Ok(Expr::Grouping(Grouping {
                 group: Box::new(expr),
+            }))
+        } else if self.ismatch(&[TokenType::This])? {
+            Ok(Expr::This(This {
+                keyword: self.previous()?.to_owned(),
             }))
         } else if self.ismatch(&[TokenType::Identifier])? {
             Ok(Expr::Var(Var::Token(self.previous()?.to_owned())))

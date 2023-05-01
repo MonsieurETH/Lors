@@ -3,7 +3,8 @@ use std::collections::HashMap;
 
 use crate::ast::{
     Assign, Binary, Block, ClassDecl, Error, Expr, Expression, FunDecl, Get, Grouping,
-    IVisitorExpr, IVisitorStmt, If, Logical, Print, Return, Set, Stmt, Unary, Var, VarDecl, While,
+    IVisitorExpr, IVisitorStmt, If, Logical, Print, Return, Set, Stmt, This, Unary, Var, VarDecl,
+    While,
 };
 
 use super::interpreter::Interpreter;
@@ -39,6 +40,7 @@ pub struct Resolver<'a> {
     environments: Vec<Scope>,
     interpreter: &'a mut Interpreter,
     current_function: FunctionType,
+    current_class: ClassType,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -47,6 +49,11 @@ pub enum FunctionType {
     Function,
     Method,
 }
+#[derive(Debug, Clone, PartialEq)]
+pub enum ClassType {
+    None,
+    Class,
+}
 
 impl<'a> Resolver<'a> {
     pub fn new(interpreter: &'a mut Interpreter) -> Self {
@@ -54,6 +61,7 @@ impl<'a> Resolver<'a> {
             environments: vec![Scope::new()],
             interpreter,
             current_function: FunctionType::None,
+            current_class: ClassType::None,
         }
     }
 
@@ -113,7 +121,7 @@ impl<'a> Resolver<'a> {
         }
     }*/
 
-    pub fn resolve_local(&mut self, expr: &mut Expr, name: &str) {
+    pub fn resolve_local(&mut self, expr: &Expr, name: &str) {
         for i in (0..self.environments.len()).rev() {
             if let Some(_) = self.environments[i].symbol_table.get(name) {
                 self.interpreter
@@ -263,13 +271,20 @@ impl<'a> IVisitorStmt<Result<Option<Stmt>, Error>> for Resolver<'a> {
 
     fn visit_class(&mut self, stmt: &Stmt) -> Result<Option<Stmt>, Error> {
         if let Stmt::ClassDecl(ClassDecl { name, methods }) = stmt {
+            let enclosing_class = self.current_class.clone();
+            self.current_class = ClassType::Class;
             self.declare(&name.lexeme)?;
             self.define(&name.lexeme);
+
+            self.begin_scope();
+            self.define("this");
 
             for method in methods {
                 self.resolve_function(method, FunctionType::Method)?;
             }
 
+            self.end_scope();
+            self.current_class = enclosing_class;
             Ok(None)
         } else {
             Err(Error::new("Invalid statement".to_string()))
@@ -390,6 +405,18 @@ impl<'a> IVisitorExpr<Result<Option<Expr>, Error>> for Resolver<'a> {
         {
             object.accept(self)?;
             value.accept(self)?;
+            Ok(None)
+        } else {
+            Err(Error::new("Invalid statement".to_string()))
+        }
+    }
+
+    fn visit_this(&mut self, expr: &Expr) -> Result<Option<Expr>, Error> {
+        if let Expr::This(This { keyword }) = expr {
+            if self.current_class == ClassType::None {
+                return Err(Error::new(format!("Can't use 'this' outside of a class.")));
+            }
+            self.resolve_local(expr, keyword.lexeme.as_str());
             Ok(None)
         } else {
             Err(Error::new("Invalid statement".to_string()))

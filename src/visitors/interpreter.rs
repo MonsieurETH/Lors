@@ -4,8 +4,8 @@ use std::{hash::Hash, hash::Hasher};
 
 use crate::ast::{
     Assign, Binary, Block, Class, ClassDecl, Error, Expr, Expression, FunDecl, Function, Get,
-    Grouping, IVisitorExpr, IVisitorStmt, If, Literal, Logical, Print, Return, Set, Stmt, Unary,
-    Var, VarDecl, While,
+    Grouping, IVisitorExpr, IVisitorStmt, If, Literal, Logical, Print, Return, Set, Stmt, This,
+    Unary, Var, VarDecl, While,
 };
 use crate::operators::Operator;
 
@@ -157,7 +157,7 @@ impl Interpreter {
         s.finish()
     }
 
-    pub fn resolve(&mut self, expr: &mut Expr, depth: usize) {
+    pub fn resolve(&mut self, expr: &Expr, depth: usize) {
         let hash = Self::calculate_hash(expr);
         self.locals.insert(hash, depth);
     }
@@ -482,6 +482,15 @@ impl IVisitorExpr<Result<Option<Expr>, Error>> for Interpreter {
                 }
                 _ => Err(Error::new("Only instances have fields.".to_string())),
             }
+        } else {
+            Err(Error::new("Invalid statement".to_string()))
+        }
+    }
+
+    fn visit_this(&mut self, expr: &Expr) -> Result<Option<Expr>, Error> {
+        if let Expr::This(This { keyword }) = expr {
+            self.lookup_symbol(&keyword.lexeme, expr.clone())?;
+            Ok(None)
         } else {
             Err(Error::new("Invalid statement".to_string()))
         }
