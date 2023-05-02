@@ -1,4 +1,6 @@
+use std::cell::RefCell;
 use std::collections::BTreeMap;
+use std::rc::Rc;
 
 use ordered_float::OrderedFloat;
 
@@ -8,13 +10,13 @@ use crate::visitors::interpreter::{Environment, Interpreter};
 
 macro_rules! define_ast {
     (pub enum $root:ident { $($n:ident: $t:ident $b:tt),* $(,)? }) => {
-        #[derive(Clone, PartialEq, Debug, Hash)]
+        #[derive(Clone, PartialEq, Debug, PartialOrd, Ord, Eq)]
         pub enum $root {
             $($n($n)),*
         }
 
         $(
-            #[derive(Clone, PartialEq, Debug, Hash)]
+            #[derive(Clone, PartialEq, Debug, PartialOrd, Ord, Eq)]
             pub $t $n $b
         )*
     }
@@ -61,7 +63,7 @@ define_ast!(
             pub name: String,
             pub parameters: Vec<Var>,
             pub body: Vec<Stmt>,
-            pub context: usize,
+            pub context: Option<Rc<RefCell<Environment>>>,
         },
         Instance: struct {
             pub class: Box<Class>,
@@ -173,7 +175,7 @@ impl From<crate::ast::Stmt> for crate::ast::Function {
                     .map(|x| crate::ast::Var::Token(x))
                     .collect(),
                 body: fun_decl.body,
-                context: 0,
+                context: None,
             },
             _ => panic!("Expected function"),
         }
@@ -195,7 +197,7 @@ impl Function {
             context,
         } = self;
 
-        interpreter.new_environment_with_parent(context);
+        interpreter.new_environment_with_enclosing(context);
 
         for (i, arg) in args.into_iter().enumerate() {
             let Var::Token(token) = parameters.get(i).unwrap();
@@ -204,7 +206,7 @@ impl Function {
         //TODO globals here
 
         let res: Option<Stmt> = interpreter
-            .execute_block(&body, interpreter.get_env_number())
+            .execute_block(&body, interpreter.get_actual_env())
             .unwrap();
 
         interpreter.drop_environment();
@@ -214,7 +216,7 @@ impl Function {
         }
     }
 
-    pub fn from_stmt(value: crate::ast::Stmt, context: usize) -> Function {
+    pub fn from_stmt(value: crate::ast::Stmt, env: Option<Rc<RefCell<Environment>>>) -> Function {
         match value {
             Stmt::FunDecl(fun_decl) => Function {
                 name: fun_decl.name,
@@ -224,7 +226,7 @@ impl Function {
                     .map(|x| crate::ast::Var::Token(x))
                     .collect(),
                 body: fun_decl.body,
-                context,
+                context: env,
             },
             _ => panic!("Expected function"),
         }
@@ -235,7 +237,10 @@ impl Function {
     }
 
     pub fn bind(self, instance: &Instance) -> Function {
-        todo!()
+        //Environment environment = new Environment(closure);
+        //environment.define("this", instance);
+        //return new LoxFunction(declaration, environment);
+        self
     }
 }
 
