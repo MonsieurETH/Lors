@@ -1,8 +1,12 @@
-class Foo {
-  init() {
-    print this;
+class Cake {
+  taste() {
+    print "Taste";
+    var adjective = "delicious";
+    print "The " + this.flavor + " cake is " + adjective + "!";
   }
 }
 
-var foo = Foo();
-print foo.init();
+print "after-class";
+var cake = Cake();
+cake.flavor = "German chocolate";
+cake.taste();

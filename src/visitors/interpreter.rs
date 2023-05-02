@@ -69,13 +69,14 @@ impl<'a> Iterator for EnvironmentIterator<'a> {
     fn next(&mut self) -> Option<Self::Item> {
         let mut env = self.interpreter.get_actual_env();
         if self.pos == 0 {
+            self.pos += 1;
             return env;
         }
-        for _ in 0..self.pos {
-            env = env?.borrow().enclosing.as_ref().map(|e| Rc::clone(e));
-        }
 
-        self.pos -= 1;
+        //for _ in 0..self.pos {
+        env = env?.borrow().enclosing.as_ref().map(|e| Rc::clone(e));
+        self.pos += 1;
+        //}
 
         match env {
             None => None,
@@ -98,7 +99,7 @@ impl Interpreter {
     pub fn iterator(&self) -> EnvironmentIterator {
         EnvironmentIterator {
             interpreter: self,
-            pos: self.counter - 1,
+            pos: 0,
         }
     }
 
@@ -115,7 +116,7 @@ impl Interpreter {
     }
 
     pub fn get_actual_env(&self) -> Option<Rc<RefCell<Environment>>> {
-        Some(Rc::clone(self.environments.as_ref().unwrap()))
+        self.environments.as_ref().map(|e| Rc::clone(e))
     }
 
     pub fn set_environment(&mut self, env: Option<Rc<RefCell<Environment>>>) {
@@ -144,9 +145,9 @@ impl Interpreter {
     }
 
     pub fn get_symbol_at(&self, mut pos: isize, name: &str) -> Result<Option<Expr>, Error> {
-        //if pos < 0 {
-        //    return Err(Error::new("Invalid position".to_string()));
-        //}
+        if pos < 0 {
+            return Err(Error::new("Invalid position".to_string()));
+        }
         for env in self.iterator() {
             if pos == 0 {
                 let symbol = env.borrow().retrieve(name); //FIXME: 'this' IS NEVER FOUND
@@ -180,9 +181,9 @@ impl Interpreter {
         name: &str,
         value: Expr,
     ) -> Result<Option<Expr>, Error> {
-        if pos < 0 {
-            return Err(Error::new("Invalid position".to_string()));
-        }
+        //if pos < 0 {
+        //    return Err(Error::new("Invalid position".to_string()));
+        //}
         for env in self.iterator() {
             if pos == 0 {
                 env.borrow_mut().define(name, value);
@@ -215,7 +216,6 @@ impl Interpreter {
     }
 
     fn lookup_symbol(&self, name: &str, expr: Expr) -> Result<Option<Expr>, Error> {
-        //let hash = Self::calculate_hash(&expr);
         let distance = self.locals.get(&expr);
 
         match distance {
@@ -224,14 +224,7 @@ impl Interpreter {
         }
     }
 
-    //pub fn calculate_hash<T: Hash>(t: &T) -> u64 {
-    //    let mut s = DefaultHasher::new();
-    //    t.hash(&mut s);
-    //    s.finish()
-    //}
-
     pub fn resolve(&mut self, expr: &Expr, depth: usize) {
-        //let hash = Self::calculate_hash(expr);
         self.locals.insert(expr.clone(), depth);
     }
 
@@ -304,11 +297,10 @@ impl IVisitorStmt<Result<Option<Stmt>, Error>> for Interpreter {
         {
             let eval_condition = condition.accept(self).unwrap();
             if let Some(Expr::Literal(Literal::Bool(b))) = eval_condition {
-                if b {
-                    _ = branch_true.accept(self)
-                } else {
-                    _ = branch_false.accept(self)
-                }
+                match b {
+                    true => branch_true.accept(self),
+                    false => branch_false.accept(self),
+                }?;
             }
         }
         Ok(None)

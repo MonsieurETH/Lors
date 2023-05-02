@@ -40,7 +40,7 @@ impl Scope {
 }
 
 pub struct Resolver<'a> {
-    environments: Vec<Scope>,
+    scopes: Vec<Scope>,
     interpreter: &'a mut Interpreter,
     current_function: FunctionType,
     current_class: ClassType,
@@ -62,7 +62,7 @@ pub enum ClassType {
 impl<'a> Resolver<'a> {
     pub fn new(interpreter: &'a mut Interpreter) -> Self {
         Resolver {
-            environments: vec![Scope::new()],
+            scopes: vec![Scope::new()],
             interpreter,
             current_function: FunctionType::None,
             current_class: ClassType::None,
@@ -70,18 +70,18 @@ impl<'a> Resolver<'a> {
     }
 
     pub fn begin_scope(&mut self) {
-        self.environments.push(Scope::new());
+        self.scopes.push(Scope::new());
     }
 
     pub fn end_scope(&mut self) {
-        self.environments.pop();
+        self.scopes.pop();
     }
 
     pub fn declare(&mut self, name: &str) -> Result<Option<Stmt>, Error> {
-        if self.environments.len() == 0 {
+        if self.scopes.len() == 0 {
             return Ok(None);
         }
-        let scope = self.environments.last_mut().unwrap();
+        let scope = self.scopes.last_mut().unwrap();
         if scope.exists(name) {
             return Err(Error::new(format!(
                 "{:?} Already a variable with this name in this scope.",
@@ -93,10 +93,10 @@ impl<'a> Resolver<'a> {
     }
 
     pub fn define(&mut self, name: &str) {
-        if self.environments.len() == 0 {
+        if self.scopes.len() == 0 {
             return;
         }
-        self.environments.last_mut().unwrap().define(name, true);
+        self.scopes.last_mut().unwrap().define(name, true);
     }
 
     //pub fn get(&self, name: &str) -> Option<bool> {
@@ -104,7 +104,7 @@ impl<'a> Resolver<'a> {
     //}
 
     pub fn get(&self, name: &str) -> Option<bool> {
-        for env in self.environments.iter().rev() {
+        for env in self.scopes.iter().rev() {
             let symbol = env.retrieve(name);
             if symbol.is_some() {
                 return symbol;
@@ -126,10 +126,9 @@ impl<'a> Resolver<'a> {
     }*/
 
     pub fn resolve_local(&mut self, expr: &Expr, name: &str) {
-        for i in (0..self.environments.len()).rev() {
-            if let Some(_) = self.environments[i].symbol_table.get(name) {
-                self.interpreter
-                    .resolve(expr, self.environments.len() - 1 - i);
+        for i in (0..self.scopes.len()).rev() {
+            if let Some(_) = self.scopes[i].symbol_table.get(name) {
+                self.interpreter.resolve(expr, self.scopes.len() - 1 - i);
                 return;
             }
         }
@@ -310,7 +309,7 @@ impl<'a> IVisitorStmt<Result<Option<Stmt>, Error>> for Resolver<'a> {
 impl<'a> IVisitorExpr<Result<Option<Expr>, Error>> for Resolver<'a> {
     fn visit_var(&mut self, expr: &Expr) -> Result<Option<Expr>, Error> {
         if let Expr::Var(Var::Token(token)) = expr {
-            if !(self.environments.len() == 0) && (self.get(&token.lexeme).unwrap() == false) {
+            if !(self.scopes.len() == 0) && (self.get(&token.lexeme).unwrap() == false) {
                 Err(Error::new(format!(
                     "Can't read local variable in its own initializer."
                 )))
