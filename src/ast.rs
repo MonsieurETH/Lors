@@ -64,6 +64,7 @@ define_ast!(
             pub parameters: Vec<Var>,
             pub body: Vec<Stmt>,
             pub context: Option<Rc<RefCell<Environment>>>,
+            pub is_initializer: bool,
         },
         Instance: struct {
             pub class: Box<Class>,
@@ -176,6 +177,7 @@ impl From<crate::ast::Stmt> for crate::ast::Function {
                     .collect(),
                 body: fun_decl.body,
                 context: None,
+                is_initializer: false,
             },
             _ => panic!("Expected function"),
         }
@@ -195,6 +197,7 @@ impl Function {
             parameters,
             body,
             context,
+            is_initializer,
         } = self;
 
         interpreter.new_environment_with_enclosing(context);
@@ -211,12 +214,22 @@ impl Function {
 
         interpreter.drop_environment();
         match res {
-            Some(Stmt::Return(Return { keyword: _, value })) => value,
+            Some(Stmt::Return(Return { keyword: _, value })) => {
+                if is_initializer {
+                    return interpreter.get_symbol_at(0, "this").unwrap().unwrap();
+                    //FIXME (double unwrap)
+                }
+                return value;
+            }
             _ => Expr::Literal(Literal::Nil),
         }
     }
 
-    pub fn from_stmt(value: crate::ast::Stmt, env: Option<Rc<RefCell<Environment>>>) -> Function {
+    pub fn from_stmt(
+        value: crate::ast::Stmt,
+        env: Option<Rc<RefCell<Environment>>>,
+        is_initializer: bool,
+    ) -> Function {
         match value {
             Stmt::FunDecl(fun_decl) => Function {
                 name: fun_decl.name,
@@ -227,6 +240,7 @@ impl Function {
                     .collect(),
                 body: fun_decl.body,
                 context: env,
+                is_initializer,
             },
             _ => panic!("Expected function"),
         }
@@ -237,20 +251,32 @@ impl Function {
     }
 
     pub fn bind(self, instance: &Instance) -> Function {
-        //Environment environment = new Environment(closure);
-        //environment.define("this", instance);
-        //return new LoxFunction(declaration, environment);
-        self
+        let mut env = Environment::new_with_enclosing(self.context.clone());
+        env.define("this", Expr::Instance(instance.clone()));
+        Function {
+            name: self.name,
+            parameters: self.parameters,
+            body: self.body,
+            context: Some(Rc::new(RefCell::new(env))),
+            is_initializer: self.is_initializer,
+        }
     }
 }
 
 impl Class {
-    pub fn execute_call(self) -> Expr {
-        let instance = Expr::Instance(Instance {
-            class: Box::new(self),
+    pub fn execute_call(self, interpreter: &mut Interpreter, args: Vec<Expr>) -> Expr {
+        let instance = Instance {
+            class: Box::new(self.clone()),
             fields: BTreeMap::new(),
-        });
-        instance
+        };
+        let init = self.find_method("init");
+        match init {
+            Ok(Some(init)) => {
+                init.bind(&instance).execute_call(interpreter, args); //FIXME
+            }
+            _ => (),
+        }
+        Expr::Instance(instance)
     }
 
     pub fn find_method(&self, name: &str) -> Result<Option<Function>, Error> {
@@ -258,7 +284,11 @@ impl Class {
     }
 
     pub fn arity(&self) -> usize {
-        self.methods.len()
+        let init = self.find_method("init");
+        match init {
+            Ok(Some(init)) => init.arity(),
+            _ => 0,
+        }
     }
 }
 

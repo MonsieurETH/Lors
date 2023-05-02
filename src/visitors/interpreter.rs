@@ -9,7 +9,18 @@ use crate::ast::{
 };
 use crate::operators::Operator;
 
+#[macro_export]
+macro_rules! extract_enum_value {
+    ($value:expr, $pattern:pat => $extracted_value:expr) => {
+        match $value {
+            $pattern => $extracted_value,
+            _ => panic!("Pattern doesn't match!"),
+        }
+    };
+}
+
 #[derive(Debug, PartialEq, Clone, PartialOrd, Ord, Eq)]
+
 pub struct Environment {
     symbol_table: BTreeMap<String, Expr>,
     enclosing: Option<Rc<RefCell<Environment>>>,
@@ -132,18 +143,22 @@ impl Interpreter {
             .define(name, value);
     }
 
-    pub fn get_symbol_at(&self, mut pos: usize, name: &str) -> Result<Option<Expr>, Error> {
+    pub fn get_symbol_at(&self, mut pos: isize, name: &str) -> Result<Option<Expr>, Error> {
         //if pos < 0 {
         //    return Err(Error::new("Invalid position".to_string()));
         //}
         for env in self.iterator() {
             if pos == 0 {
-                let symbol = env.borrow().retrieve(name);
+                let symbol = env.borrow().retrieve(name); //FIXME: 'this' IS NEVER FOUND
                 if symbol.is_some() {
                     return Ok(symbol);
                 }
             }
             pos -= 1;
+
+            if pos < 0 {
+                break;
+            }
         }
 
         Ok(None)
@@ -204,7 +219,7 @@ impl Interpreter {
         let distance = self.locals.get(&expr);
 
         match distance {
-            Some(distance) => self.get_symbol_at(*distance, name),
+            Some(distance) => self.get_symbol_at(*distance as isize, name),
             None => Ok(self.globals.get(name).cloned()),
         }
     }
@@ -328,7 +343,7 @@ impl IVisitorStmt<Result<Option<Stmt>, Error>> for Interpreter {
             body: _,
         }) = stmt
         {
-            let call: Function = Function::from_stmt(stmt.clone(), self.get_actual_env());
+            let call: Function = Function::from_stmt(stmt.clone(), self.get_actual_env(), false);
             self.define_symbol(name.as_str(), Expr::Function(call));
         }
         Ok(None)
@@ -354,7 +369,12 @@ impl IVisitorStmt<Result<Option<Stmt>, Error>> for Interpreter {
         if let Stmt::ClassDecl(ClassDecl { name, methods }) = stmt {
             let mut meths = BTreeMap::new();
             for method in methods {
-                let fun: Function = Function::from_stmt(method.clone(), self.get_actual_env());
+                let fun_decl = extract_enum_value!(method, Stmt::FunDecl(c) => c);
+                let fun: Function = Function::from_stmt(
+                    method.clone(),
+                    self.get_actual_env(),
+                    fun_decl.name == "init",
+                );
                 meths.insert(fun.name.clone(), fun);
             }
             let class: Class = Class {
@@ -491,6 +511,7 @@ impl IVisitorExpr<Result<Option<Expr>, Error>> for Interpreter {
                         parameters,
                         body: _,
                         context: _,
+                        is_initializer,
                     } = &fun;
 
                     if args.len() != parameters.len() {
@@ -504,7 +525,7 @@ impl IVisitorExpr<Result<Option<Expr>, Error>> for Interpreter {
                         Ok(Some(fun.execute_call(self, args)))
                     }
                 }
-                Expr::Class(class) => Ok(Some(class.execute_call())), //Ok(Some(class.execute_call(self, args))),
+                Expr::Class(class) => Ok(Some(class.execute_call(self, args))),
                 _ => Err(Error::new("Invalid call".to_string())),
             }
         } else {
@@ -547,8 +568,7 @@ impl IVisitorExpr<Result<Option<Expr>, Error>> for Interpreter {
 
     fn visit_this(&mut self, expr: &Expr) -> Result<Option<Expr>, Error> {
         if let Expr::This(This { keyword }) = expr {
-            self.lookup_symbol(&keyword.lexeme, expr.clone())?;
-            Ok(None)
+            self.lookup_symbol(&keyword.lexeme, expr.clone())
         } else {
             Err(Error::new("Invalid statement".to_string()))
         }

@@ -1,10 +1,13 @@
 use core::panic;
 use std::collections::HashMap;
 
-use crate::ast::{
-    Assign, Binary, Block, ClassDecl, Error, Expr, Expression, FunDecl, Get, Grouping,
-    IVisitorExpr, IVisitorStmt, If, Logical, Print, Return, Set, Stmt, This, Unary, Var, VarDecl,
-    While,
+use crate::{
+    ast::{
+        Assign, Binary, Block, ClassDecl, Error, Expr, Expression, FunDecl, Get, Grouping,
+        IVisitorExpr, IVisitorStmt, If, Literal, Logical, Print, Return, Set, Stmt, This, Unary,
+        Var, VarDecl, While,
+    },
+    extract_enum_value,
 };
 
 use super::interpreter::Interpreter;
@@ -48,6 +51,7 @@ pub enum FunctionType {
     None,
     Function,
     Method,
+    Initializer,
 }
 #[derive(Debug, Clone, PartialEq)]
 pub enum ClassType {
@@ -260,9 +264,15 @@ impl<'a> IVisitorStmt<Result<Option<Stmt>, Error>> for Resolver<'a> {
                         keyword
                     )));
                 }
-                //if *value != Expr::Literal(Literal::Nil) {
-                value.accept(self).unwrap();
-                //}
+                if *value != Expr::Literal(Literal::Nil) {
+                    if self.current_function == FunctionType::Initializer {
+                        return Err(Error::new(format!(
+                            "{:?} Can't return a value from an initializer.",
+                            keyword
+                        )));
+                    }
+                    value.accept(self).unwrap();
+                }
                 Ok(None)
             }
             _ => Err(Error::new("Invalid statement".to_string())),
@@ -280,7 +290,12 @@ impl<'a> IVisitorStmt<Result<Option<Stmt>, Error>> for Resolver<'a> {
             self.define("this");
 
             for method in methods {
-                self.resolve_function(method, FunctionType::Method)?;
+                let fun_decl = extract_enum_value!(method, Stmt::FunDecl(c) => c);
+                if fun_decl.name == "init" {
+                    self.resolve_function(method, FunctionType::Initializer)?;
+                } else {
+                    self.resolve_function(method, FunctionType::Method)?;
+                }
             }
 
             self.end_scope();
