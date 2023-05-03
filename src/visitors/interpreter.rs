@@ -73,10 +73,10 @@ impl<'a> Iterator for EnvironmentIterator<'a> {
             return env;
         }
 
-        //for _ in 0..self.pos {
-        env = env?.borrow().enclosing.as_ref().map(|e| Rc::clone(e));
+        for _ in 0..self.pos {
+            env = env?.borrow().enclosing.as_ref().map(|e| Rc::clone(e));
+        }
         self.pos += 1;
-        //}
 
         match env {
             None => None,
@@ -134,6 +134,7 @@ impl Interpreter {
                 .unwrap(),
         ));
         self.environments = enclosing;
+        self.counter -= 1;
     }
 
     pub fn define_symbol(&mut self, name: &str, value: Expr) {
@@ -544,12 +545,15 @@ impl IVisitorExpr<Result<Option<Expr>, Error>> for Interpreter {
             value,
         }) = expr
         {
+            let var_name = extract_enum_value!(object.as_ref(), Expr::Var(Var::Token(t)) => t);
             let accepted_object = object.accept(self).unwrap().unwrap();
             match accepted_object {
                 Expr::Instance(mut instance) => {
                     let value = value.accept(self).unwrap().unwrap();
-                    instance.set_field(&name.lexeme, value);
-                    Ok(None)
+                    instance.set_field(&name.lexeme, value.clone());
+
+                    self.define_symbol(&var_name.lexeme, Expr::Instance(instance));
+                    Ok(Some(value))
                 }
                 _ => Err(Error::new("Only instances have fields.".to_string())),
             }
@@ -564,5 +568,116 @@ impl IVisitorExpr<Result<Option<Expr>, Error>> for Interpreter {
         } else {
             Err(Error::new("Invalid statement".to_string()))
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use ordered_float::OrderedFloat;
+
+    use crate::ast::{Expr, Literal};
+
+    use super::Interpreter;
+
+    #[test]
+    fn environment_lifecycle() {
+        let mut interpreter = Interpreter::new();
+        assert_eq!(interpreter.globals.len(), 0);
+        assert_eq!(interpreter.locals.len(), 0);
+        assert_eq!(interpreter.counter, 1);
+
+        interpreter.new_environment();
+        assert_eq!(interpreter.globals.len(), 0);
+        assert_eq!(interpreter.locals.len(), 0);
+        assert_eq!(interpreter.counter, 2);
+
+        interpreter.new_environment();
+        assert_eq!(interpreter.globals.len(), 0);
+        assert_eq!(interpreter.locals.len(), 0);
+        assert_eq!(interpreter.counter, 3);
+
+        interpreter.drop_environment();
+        assert_eq!(interpreter.globals.len(), 0);
+        assert_eq!(interpreter.locals.len(), 0);
+        assert_eq!(interpreter.counter, 2);
+
+        interpreter.drop_environment();
+        assert_eq!(interpreter.globals.len(), 0);
+        assert_eq!(interpreter.locals.len(), 0);
+        assert_eq!(interpreter.counter, 1);
+    }
+
+    #[test]
+    fn environment_nothing_to_drop() {
+        let mut interpreter = Interpreter::new();
+        interpreter.drop_environment();
+        assert_eq!(interpreter.globals.len(), 0);
+        assert_eq!(interpreter.locals.len(), 0);
+        //assert_eq!(interpreter.counter, 1);
+        //Need to decide behavior here
+    }
+    #[test]
+    fn environment_manipulation() {
+        let mut interpreter = Interpreter::new();
+        assert_eq!(interpreter.globals.len(), 0);
+        assert_eq!(interpreter.locals.len(), 0);
+        assert_eq!(interpreter.counter, 1);
+        interpreter.define_symbol("a", Expr::Literal(Literal::Number(OrderedFloat(1.0))));
+
+        interpreter.new_environment();
+        assert_eq!(interpreter.globals.len(), 0);
+        assert_eq!(interpreter.locals.len(), 0);
+        assert_eq!(interpreter.counter, 2);
+        interpreter.define_symbol("b", Expr::Literal(Literal::Number(OrderedFloat(2.0))));
+
+        interpreter.new_environment();
+        assert_eq!(interpreter.globals.len(), 0);
+        assert_eq!(interpreter.locals.len(), 0);
+        assert_eq!(interpreter.counter, 3);
+        interpreter.define_symbol("c", Expr::Literal(Literal::Number(OrderedFloat(3.0))));
+
+        assert_eq!(
+            interpreter.get_symbol_at(0, "c").unwrap().unwrap(),
+            Expr::Literal(Literal::Number(OrderedFloat(3.0)))
+        );
+        assert_eq!(interpreter.get_symbol_at(1, "c").unwrap(), None);
+        assert_eq!(interpreter.get_symbol_at(2, "c").unwrap(), None);
+
+        assert_eq!(
+            interpreter.get_symbol_at(1, "b").unwrap().unwrap(),
+            Expr::Literal(Literal::Number(OrderedFloat(2.0)))
+        );
+        assert_eq!(interpreter.get_symbol_at(0, "b").unwrap(), None);
+        assert_eq!(interpreter.get_symbol_at(2, "b").unwrap(), None);
+
+        assert_eq!(
+            interpreter.get_symbol_at(2, "a").unwrap().unwrap(),
+            Expr::Literal(Literal::Number(OrderedFloat(1.0)))
+        );
+        assert_eq!(interpreter.get_symbol_at(0, "a").unwrap(), None);
+        assert_eq!(interpreter.get_symbol_at(1, "a").unwrap(), None);
+
+        interpreter.drop_environment();
+        assert_eq!(interpreter.globals.len(), 0);
+        assert_eq!(interpreter.locals.len(), 0);
+        assert_eq!(interpreter.counter, 2);
+
+        assert_eq!(interpreter.get_symbol_at(0, "c").unwrap(), None);
+        assert_eq!(interpreter.get_symbol_at(1, "c").unwrap(), None);
+        assert_eq!(interpreter.get_symbol_at(2, "c").unwrap(), None);
+
+        assert_eq!(
+            interpreter.get_symbol_at(0, "b").unwrap().unwrap(),
+            Expr::Literal(Literal::Number(OrderedFloat(2.0)))
+        );
+        assert_eq!(interpreter.get_symbol_at(1, "b").unwrap(), None);
+        assert_eq!(interpreter.get_symbol_at(2, "b").unwrap(), None);
+
+        assert_eq!(
+            interpreter.get_symbol_at(1, "a").unwrap().unwrap(),
+            Expr::Literal(Literal::Number(OrderedFloat(1.0)))
+        );
+        assert_eq!(interpreter.get_symbol_at(0, "a").unwrap(), None);
+        assert_eq!(interpreter.get_symbol_at(2, "a").unwrap(), None);
     }
 }
