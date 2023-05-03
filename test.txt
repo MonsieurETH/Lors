@@ -1,11 +1,9 @@
-class Cake {
-  taste() {
-    var adjective = "delicious";
-    print this.flavor;
+class Doughnut {
+  cook() {
+    print "Fry until golden brown.";
   }
 }
 
-print "after-class";
-var cake = Cake();
-cake.flavor = "German chocolate";
-cake.taste();
+class BostonCream < Doughnut {}
+
+BostonCream().cook();

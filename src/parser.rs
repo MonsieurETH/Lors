@@ -1,6 +1,6 @@
 use crate::ast::{
     Assign, Binary, Block, Call, ClassDecl, Error, Expr, Expression, FunDecl, Get, Grouping, If,
-    Literal, Logical, Print, Return, Set, Stmt, This, Unary, Var, VarDecl, While,
+    Literal, Logical, Print, Return, Set, Stmt, Super, This, Unary, Var, VarDecl, While,
 };
 use crate::lexer::{Token, TokenLiteral, TokenType};
 use crate::operators::Operator;
@@ -114,6 +114,12 @@ impl Parser {
         let name = self
             .consume(TokenType::Identifier, "Expect class name.")?
             .clone();
+
+        let mut superclass: Option<Box<Expr>> = None;
+        if self.ismatch(&[TokenType::Less])? {
+            self.consume(TokenType::Identifier, "Expect superclass name.")?;
+            superclass = Some(Box::new(Expr::Var(Var::Token(self.previous()?.clone()))));
+        }
         self.consume(TokenType::LeftBrace, "Expect '{' before class body.")?;
 
         let mut methods: Vec<Stmt> = vec![];
@@ -125,6 +131,7 @@ impl Parser {
         Ok(Stmt::ClassDecl(ClassDecl {
             name: name,
             methods,
+            superclass,
         }))
     }
 
@@ -492,6 +499,14 @@ impl Parser {
         } else if self.ismatch(&[TokenType::This])? {
             Ok(Expr::This(This {
                 keyword: self.previous()?.to_owned(),
+            }))
+        } else if self.ismatch(&[TokenType::Super])? {
+            let keyword = self.previous()?.to_owned();
+            self.consume(TokenType::Dot, "Expect '.' after 'super'.")?;
+            let method = self.consume(TokenType::Identifier, "Expect superclass method name.")?;
+            Ok(Expr::Super(Super {
+                keyword,
+                method: method.clone(),
             }))
         } else if self.ismatch(&[TokenType::Identifier])? {
             Ok(Expr::Var(Var::Token(self.previous()?.to_owned())))

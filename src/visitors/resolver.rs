@@ -4,8 +4,8 @@ use std::collections::HashMap;
 use crate::{
     ast::{
         Assign, Binary, Block, ClassDecl, Error, Expr, Expression, FunDecl, Get, Grouping,
-        IVisitorExpr, IVisitorStmt, If, Literal, Logical, Print, Return, Set, Stmt, This, Unary,
-        Var, VarDecl, While,
+        IVisitorExpr, IVisitorStmt, If, Literal, Logical, Print, Return, Set, Stmt, Super, This,
+        Unary, Var, VarDecl, While,
     },
     extract_enum_value,
 };
@@ -57,6 +57,7 @@ pub enum FunctionType {
 pub enum ClassType {
     None,
     Class,
+    SubClass,
 }
 
 impl<'a> Resolver<'a> {
@@ -279,11 +280,31 @@ impl<'a> IVisitorStmt<Result<Option<Stmt>, Error>> for Resolver<'a> {
     }
 
     fn visit_class(&mut self, stmt: &Stmt) -> Result<Option<Stmt>, Error> {
-        if let Stmt::ClassDecl(ClassDecl { name, methods }) = stmt {
+        if let Stmt::ClassDecl(ClassDecl {
+            name,
+            methods,
+            superclass,
+        }) = stmt
+        {
             let enclosing_class = self.current_class.clone();
             self.current_class = ClassType::Class;
             self.declare(&name.lexeme)?;
             self.define(&name.lexeme);
+
+            match superclass {
+                Some(boxed_expr) => {
+                    let token =
+                        extract_enum_value!(*boxed_expr.clone(), Expr::Var(Var::Token(c)) => c);
+                    if token.lexeme == name.lexeme {
+                        return Err(Error::new("A class can't inherit from itself.".to_string()));
+                    }
+                    self.current_class = ClassType::SubClass;
+                    superclass.as_ref().unwrap().accept(self).unwrap();
+                    self.begin_scope();
+                    self.define(name.lexeme.as_str());
+                }
+                _ => (),
+            }
 
             self.begin_scope();
             self.define("this");
@@ -295,6 +316,11 @@ impl<'a> IVisitorStmt<Result<Option<Stmt>, Error>> for Resolver<'a> {
                 } else {
                     self.resolve_function(method, FunctionType::Method)?;
                 }
+            }
+
+            match superclass {
+                Some(_) => self.end_scope(),
+                _ => (),
             }
 
             self.end_scope();
@@ -429,6 +455,22 @@ impl<'a> IVisitorExpr<Result<Option<Expr>, Error>> for Resolver<'a> {
         if let Expr::This(This { keyword }) = expr {
             if self.current_class == ClassType::None {
                 return Err(Error::new(format!("Can't use 'this' outside of a class.")));
+            }
+            self.resolve_local(expr, keyword.lexeme.as_str());
+            Ok(None)
+        } else {
+            Err(Error::new("Invalid statement".to_string()))
+        }
+    }
+
+    fn visit_super(&mut self, expr: &Expr) -> Result<Option<Expr>, Error> {
+        if let Expr::Super(Super { keyword, method }) = expr {
+            if self.current_class == ClassType::None {
+                return Err(Error::new(format!("Can't use 'super' outside of a class.")));
+            } else if self.current_class != ClassType::SubClass {
+                return Err(Error::new(format!(
+                    "Can't use 'super' in a class with no superclass."
+                )));
             }
             self.resolve_local(expr, keyword.lexeme.as_str());
             Ok(None)

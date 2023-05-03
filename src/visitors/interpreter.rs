@@ -4,8 +4,8 @@ use std::rc::Rc;
 
 use crate::ast::{
     Assign, Binary, Block, Class, ClassDecl, Error, Expr, Expression, FunDecl, Function, Get,
-    Grouping, IVisitorExpr, IVisitorStmt, If, Literal, Logical, Print, Return, Set, Stmt, This,
-    Unary, Var, VarDecl, While,
+    Grouping, IVisitorExpr, IVisitorStmt, If, Literal, Logical, Print, Return, Set, Stmt, Super,
+    This, Unary, Var, VarDecl, While,
 };
 use crate::operators::Operator;
 
@@ -359,7 +359,31 @@ impl IVisitorStmt<Result<Option<Stmt>, Error>> for Interpreter {
     }
 
     fn visit_class(&mut self, stmt: &Stmt) -> Result<Option<Stmt>, Error> {
-        if let Stmt::ClassDecl(ClassDecl { name, methods }) = stmt {
+        if let Stmt::ClassDecl(ClassDecl {
+            name,
+            methods,
+            superclass,
+        }) = stmt
+        {
+            let asc = if superclass.is_some() {
+                let accepted_superclass = superclass.as_ref().unwrap().accept(self).unwrap();
+                match accepted_superclass {
+                    Some(Expr::Class(Class {
+                        name: _,
+                        methods: _,
+                        superclass: _,
+                    })) => {}
+                    _ => return Err(Error::new("Superclass must be a class".to_string())),
+                }
+
+                self.new_environment_with_enclosing(self.get_actual_env());
+                self.define_symbol("super", accepted_superclass.clone().unwrap());
+
+                Some(Box::new(accepted_superclass.unwrap()))
+            } else {
+                None
+            };
+
             let mut meths = BTreeMap::new();
             for method in methods {
                 let fun_decl = extract_enum_value!(method, Stmt::FunDecl(c) => c);
@@ -370,9 +394,15 @@ impl IVisitorStmt<Result<Option<Stmt>, Error>> for Interpreter {
                 );
                 meths.insert(fun.name.clone(), fun);
             }
+
+            if superclass.is_some() {
+                self.drop_environment();
+            }
+
             let class: Class = Class {
                 name: name.lexeme.clone(),
                 methods: meths,
+                superclass: asc,
             };
             self.define_symbol(&name.lexeme.as_str(), Expr::Class(class));
 
@@ -565,6 +595,30 @@ impl IVisitorExpr<Result<Option<Expr>, Error>> for Interpreter {
     fn visit_this(&mut self, expr: &Expr) -> Result<Option<Expr>, Error> {
         if let Expr::This(This { keyword }) = expr {
             self.lookup_symbol(&keyword.lexeme, expr.clone())
+        } else {
+            Err(Error::new("Invalid statement".to_string()))
+        }
+    }
+
+    fn visit_super(&mut self, expr: &Expr) -> Result<Option<Expr>, Error> {
+        if let Expr::Super(Super { keyword, method }) = expr {
+            let distance = self.locals.get(expr).unwrap();
+
+            let d = *distance;
+            let superclass = self.get_symbol_at(d as isize, "super").unwrap().unwrap();
+            let object = self.get_symbol_at(d as isize - 1, "this").unwrap().unwrap();
+
+            let superclass = extract_enum_value!(superclass, Expr::Class(c) => c);
+            let object = extract_enum_value!(object, Expr::Instance(i) => i);
+
+            let func = superclass.find_method(method.lexeme.as_str());
+            match func {
+                Ok(Some(func)) => Ok(Some(Expr::Function(func.bind(&object)))),
+                _ => Err(Error::new(format!(
+                    "Undefined property '{}'.",
+                    method.lexeme
+                ))),
+            }
         } else {
             Err(Error::new("Invalid statement".to_string()))
         }

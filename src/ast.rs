@@ -4,6 +4,7 @@ use std::rc::Rc;
 
 use ordered_float::OrderedFloat;
 
+use crate::extract_enum_value;
 use crate::lexer::Token;
 use crate::operators::Operator;
 use crate::visitors::interpreter::{Environment, Interpreter};
@@ -73,6 +74,7 @@ define_ast!(
         Class: struct {
             pub name: String,
             pub methods: BTreeMap<String, Function>,
+            pub superclass: Option<Box<Expr>>,
         },
         Get: struct {
             pub object: Box<Expr>,
@@ -85,6 +87,10 @@ define_ast!(
         },
         This: struct {
             pub keyword: Token,
+        },
+        Super: struct {
+            pub keyword: Token,
+            pub method: Token,
         }
 
     }
@@ -126,6 +132,7 @@ define_ast!(
         ClassDecl: struct {
             pub name: Token,
             pub methods: Vec<Stmt>,
+            pub superclass: Option<Box<Expr>>,
         }
     }
 );
@@ -160,6 +167,7 @@ impl Expr {
             Expr::Get(_) => visitor.visit_get(&self),
             Expr::Set(_) => visitor.visit_set(&self),
             Expr::This(_) => visitor.visit_this(&self),
+            Expr::Super(_) => visitor.visit_super(&self),
             _ => panic!("Invalid expression"),
         }
     }
@@ -280,7 +288,16 @@ impl Class {
     }
 
     pub fn find_method(&self, name: &str) -> Result<Option<Function>, Error> {
-        Ok(self.methods.get(name).cloned())
+        match self.methods.get(name).cloned() {
+            Some(method) => Ok(Some(method)),
+            None => match self.superclass {
+                Some(ref superclass) => {
+                    let inner_class = extract_enum_value!(superclass.as_ref(), Expr::Class(c) => c);
+                    inner_class.find_method(name)
+                }
+                None => Ok(None),
+            },
+        }
     }
 
     pub fn arity(&self) -> usize {
@@ -325,6 +342,7 @@ pub trait IVisitorExpr<T> {
     fn visit_get(&mut self, expr: &Expr) -> T;
     fn visit_set(&mut self, expr: &Expr) -> T;
     fn visit_this(&mut self, expr: &Expr) -> T;
+    fn visit_super(&mut self, expr: &Expr) -> T;
 }
 
 pub trait IVisitorStmt<T> {
