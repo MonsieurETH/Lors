@@ -15,14 +15,14 @@ use super::interpreter::Interpreter;
 #[derive(Debug, PartialEq)]
 pub struct Scope {
     symbol_table: HashMap<String, bool>,
-    interpreter: Interpreter,
+    //interpreter: Interpreter,
 }
 
 impl Scope {
     pub fn new() -> Self {
         Scope {
             symbol_table: HashMap::new(),
-            interpreter: Interpreter::new(),
+            //interpreter: Interpreter::new(),
         }
     }
 
@@ -100,10 +100,6 @@ impl<'a> Resolver<'a> {
         self.scopes.last_mut().unwrap().define(name, true);
     }
 
-    //pub fn get(&self, name: &str) -> Option<bool> {
-    //    self.environments.last().unwrap().retrieve(name)
-    //}
-
     pub fn get(&self, name: &str) -> Option<bool> {
         for env in self.scopes.iter().rev() {
             let symbol = env.retrieve(name);
@@ -112,19 +108,7 @@ impl<'a> Resolver<'a> {
             }
         }
         None
-        //Err(Error::new(format!("{:?} is not defined.", name)))
     }
-
-    /*pub fn resolve_local(&mut self, expr: &mut Expr, name: &str) {
-        for (i, scope) in self.environments.iter().enumerate().rev() {
-            //let pos = self.environments.len() - 1 - i;
-            if scope.exists(name) {
-                self.interpreter
-                    .resolve(expr, self.environments.len() - 1 - i);
-                return;
-            }
-        }
-    }*/
 
     pub fn resolve_local(&mut self, expr: &Expr, name: &str) {
         for i in (0..self.scopes.len()).rev() {
@@ -391,7 +375,7 @@ impl<'a> IVisitorExpr<Result<Option<Expr>, Error>> for Resolver<'a> {
     fn visit_assign(&mut self, expr: &Expr) -> Result<Option<Expr>, Error> {
         if let Expr::Assign(Assign { var, expr }) = expr {
             let Var::Token(token) = var;
-            let _accepted_expr = expr.accept(self)?;
+            expr.accept(self)?;
             self.resolve_local(&mut expr.clone(), &token.lexeme);
             Ok(None)
         } else {

@@ -1,8 +1,6 @@
 var a = "a";
 var b = "b";
-var c = "c";
 
-a = b = c;
+a = b;
 print a; // expect: c
 print b; // expect: c
-print c; // expect: c

@@ -150,7 +150,7 @@ impl Interpreter {
         }
         for env in self.iterator() {
             if pos == 0 {
-                let symbol = env.borrow().retrieve(name); //FIXME: 'this' IS NEVER FOUND
+                let symbol = env.borrow().retrieve(name);
                 if symbol.is_some() {
                     return Ok(symbol);
                 }
@@ -192,8 +192,8 @@ impl Interpreter {
         false
     }
 
-    fn lookup_symbol(&self, name: &str, expr: Expr) -> Result<Option<Expr>, Error> {
-        let distance = self.locals.get(&expr);
+    fn lookup_symbol(&self, name: &str, expr: &Expr) -> Result<Option<Expr>, Error> {
+        let distance = self.locals.get(expr);
 
         match distance {
             Some(distance) => self.get_symbol_at(*distance as isize, name),
@@ -431,7 +431,7 @@ impl IVisitorExpr<Result<Option<Expr>, Error>> for Interpreter {
 
     fn visit_var(&mut self, expr: &Expr) -> Result<Option<Expr>, Error> {
         if let Expr::Var(Var::Token(name)) = expr {
-            self.lookup_symbol(name.lexeme.as_str(), expr.clone())
+            self.lookup_symbol(name.lexeme.as_str(), expr)
         } else {
             Err(Error::new("Invalid expression".to_string()))
         }
@@ -444,9 +444,7 @@ impl IVisitorExpr<Result<Option<Expr>, Error>> for Interpreter {
 
             if self.check_symbol(&var_name) {
                 let accepted_expr = expr.accept(self).unwrap().unwrap();
-
-                //let hash = Self::calculate_hash(&accepted_expr);
-                let distance = self.locals.get(&accepted_expr);
+                let distance = self.locals.get(&expr);
 
                 match distance {
                     Some(distance) => {
@@ -573,7 +571,7 @@ impl IVisitorExpr<Result<Option<Expr>, Error>> for Interpreter {
 
     fn visit_this(&mut self, expr: &Expr) -> Result<Option<Expr>, Error> {
         if let Expr::This(This { keyword }) = expr {
-            self.lookup_symbol(&keyword.lexeme, expr.clone())
+            self.lookup_symbol(&keyword.lexeme, expr)
         } else {
             Err(Error::new("Invalid statement".to_string()))
         }
