@@ -247,7 +247,10 @@ impl IVisitorStmt<Result<Option<Stmt>, Error>> for Interpreter {
         match stmt {
             Stmt::Print(Print { expr }) => {
                 let pv = expr.accept(self)?;
-                println!("{:?}", pv);
+                match pv {
+                    Some(pv) => println!("{:?}", pv),
+                    None => println!("None"),
+                }
                 Ok(None)
             }
             _ => Err(Error::new("Invalid statement".to_string())),

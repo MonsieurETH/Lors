@@ -6,7 +6,7 @@ const TESTS_FOLDER: &str = "./tests";
 fn test_assigment() {
     let tr = TestReader::new(&(TESTS_FOLDER.to_string() + "/assignment/*.lox"));
     for key in tr.iter() {
-        println!("{}", key);
+        println!("key: {}", key);
         let (expected, result) = tr.run_test(&(TESTS_FOLDER.to_string() + "/" + key));
         assert_eq!(expected, result)
     }

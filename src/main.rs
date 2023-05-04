@@ -44,11 +44,20 @@ fn run_test(path: &String) {
     } else {
         let only_err = ast.iter().filter(|result| result.is_err());
         for err in only_err {
-            println!("{:?}", err.as_ref().unwrap_err());
+            println!("{:?}", err.as_ref().unwrap_err().msg);
         }
     }
 
-    apply_visitor(&mut interpreter, &ast);
+    let only_ok = ast.iter().filter(|result| result.is_ok());
+    if only_ok.count() == ast.len() {
+        apply_visitor(&mut interpreter, &ast);
+    } else {
+        let only_err = ast.iter().filter(|result| result.is_err());
+        for err in only_err {
+            println!("{:?}", err.as_ref().unwrap_err().msg);
+        }
+    }
+
     let _ = ast.iter().filter(|result| result.is_err());
 }
 
@@ -85,7 +94,7 @@ fn run(source: &String) -> bool {
     } else {
         let only_err = ast.iter().filter(|result| result.is_err());
         for err in only_err {
-            println!("{:?}", err.as_ref().unwrap_err());
+            println!("{:?}", err.as_ref().unwrap_err().msg);
         }
     }
 
