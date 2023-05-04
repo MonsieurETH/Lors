@@ -464,7 +464,7 @@ impl<'a> IVisitorExpr<Result<Option<Expr>, Error>> for Resolver<'a> {
     }
 
     fn visit_super(&mut self, expr: &Expr) -> Result<Option<Expr>, Error> {
-        if let Expr::Super(Super { keyword, method }) = expr {
+        if let Expr::Super(Super { keyword, method: _ }) = expr {
             if self.current_class == ClassType::None {
                 return Err(Error::new(format!("Can't use 'super' outside of a class.")));
             } else if self.current_class != ClassType::SubClass {

@@ -28,7 +28,6 @@ impl Parser {
                 Ok(stmt) => program.push(Ok(stmt)),
                 Err(Error { msg: message }) => return vec![Err(Error { msg: message })],
             }
-            //program.push(stmt);
         }
 
         program
@@ -162,7 +161,7 @@ impl Parser {
         let true_branch = self.statement()?;
         let mut false_branch = Stmt::Expression(Expression {
             expr: Box::new(Expr::Literal(Literal::Nil)),
-        }); // TODO too hacky!
+        });
         if self.ismatch(&[TokenType::Else])? {
             false_branch = self.statement()?;
         }
@@ -293,11 +292,9 @@ impl Parser {
     }
 
     fn assigment(&mut self) -> Result<Expr, Error> {
-        //let expr: Expr = self.equality();
         let expr: Expr = self.or()?;
 
         if self.ismatch(&[TokenType::Equal])? {
-            //let equal: Token = self.previous()?.clone();
             let value: Expr = self.assigment()?;
 
             match expr {

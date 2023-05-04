@@ -254,10 +254,6 @@ impl Function {
         }
     }
 
-    pub fn arity(&self) -> usize {
-        self.parameters.len()
-    }
-
     pub fn bind(self, instance: &Instance) -> Function {
         let mut env = Environment::new_with_enclosing(self.context.clone());
         env.define("this", Expr::Instance(instance.clone()));
@@ -297,14 +293,6 @@ impl Class {
                 }
                 None => Ok(None),
             },
-        }
-    }
-
-    pub fn arity(&self) -> usize {
-        let init = self.find_method("init");
-        match init {
-            Ok(Some(init)) => init.arity(),
-            _ => 0,
         }
     }
 }

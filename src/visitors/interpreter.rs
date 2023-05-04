@@ -92,7 +92,6 @@ impl Interpreter {
             locals: BTreeMap::new(),
             globals: BTreeMap::new(),
             counter: 1,
-            //actual_env: None,
         }
     }
 
@@ -166,25 +165,12 @@ impl Interpreter {
         Ok(None)
     }
 
-    /*pub fn get_symbol(&self, name: &str) -> Result<Option<Expr>, Error> {
-        for env in self.environments.iter().rev() {
-            let symbol = env.retrieve(name);
-            if symbol.is_some() {
-                return Ok(symbol);
-            }
-        }
-        Ok(None)
-    }*/
-
     pub fn assign_symbol_at(
         &mut self,
         mut pos: usize,
         name: &str,
         value: Expr,
     ) -> Result<Option<Expr>, Error> {
-        //if pos < 0 {
-        //    return Err(Error::new("Invalid position".to_string()));
-        //}
         for env in self.iterator() {
             if pos == 0 {
                 env.borrow_mut().define(name, value);
@@ -195,16 +181,6 @@ impl Interpreter {
 
         Ok(None)
     }
-
-    /*pub fn assign_symbol(&mut self, name: &str, value: Expr) {
-        for env in self.environments.iter_mut().rev() {
-            let symbol = env.retrieve(name);
-            if symbol.is_some() {
-                env.define(name, value);
-                break;
-            }
-        }
-    }*/
 
     pub fn check_symbol(&self, name: &str) -> bool {
         for env in self.iterator() {
@@ -534,7 +510,7 @@ impl IVisitorExpr<Result<Option<Expr>, Error>> for Interpreter {
                         parameters,
                         body: _,
                         context: _,
-                        is_initializer,
+                        is_initializer: _,
                     } = &fun;
 
                     if args.len() != parameters.len() {
@@ -601,7 +577,7 @@ impl IVisitorExpr<Result<Option<Expr>, Error>> for Interpreter {
     }
 
     fn visit_super(&mut self, expr: &Expr) -> Result<Option<Expr>, Error> {
-        if let Expr::Super(Super { keyword, method }) = expr {
+        if let Expr::Super(Super { keyword: _, method }) = expr {
             let distance = self.locals.get(expr).unwrap();
 
             let d = *distance;
