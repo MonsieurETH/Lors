@@ -189,7 +189,7 @@ impl<'a> IVisitorStmt<Result<Option<Stmt>, Error>> for Resolver<'a> {
         if let Stmt::Block(Block { stmts }) = stmt {
             self.begin_scope();
             for stmt in stmts {
-                stmt.accept(self).unwrap();
+                stmt.accept(self)?;
             }
             self.end_scope();
             Ok(None)
@@ -280,12 +280,15 @@ impl<'a> IVisitorStmt<Result<Option<Stmt>, Error>> for Resolver<'a> {
                     let token =
                         extract_enum_value!(*boxed_expr.clone(), Expr::Var(Var::Token(c)) => c);
                     if token.lexeme == name.lexeme {
-                        return Err(Error::new("A class can't inherit from itself.".to_string()));
+                        return Err(Error::new(format!(
+                            "Error at '{:}': A class can't inherit from itself.",
+                            name.lexeme
+                        )));
                     }
                     self.current_class = ClassType::SubClass;
                     superclass.as_ref().unwrap().accept(self).unwrap();
                     self.begin_scope();
-                    self.define(name.lexeme.as_str());
+                    self.define("super");
                 }
                 _ => (),
             }

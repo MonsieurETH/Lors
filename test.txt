@@ -1,6 +1,1 @@
-var a = "a";
-var b = "b";
-
-a = b;
-print a; // expect: c
-print b; // expect: c
+class Foo < Foo {} // Error at 'Foo': A class can't inherit from itself.

@@ -52,19 +52,9 @@ fn test_call() {
     }
 }
 
-//#[test]
-//fn test_class() {
-//    let tr = TestReader::new(&(TESTS_FOLDER.to_string() + "/class/*.lox"));
-//    for key in tr.iter() {
-//        println!("{}", key);
-//        let (expected, result) = tr.run_test(&(TESTS_FOLDER.to_string() + "/" + key));
-//        assert_eq!(expected, result)
-//    }
-//}
-
 #[test]
-fn test_comments() {
-    let tr = TestReader::new(&(TESTS_FOLDER.to_string() + "/comments/*.lox"));
+fn test_class() {
+    let tr = TestReader::new(&(TESTS_FOLDER.to_string() + "/class/*.lox"));
     for key in tr.iter() {
         println!("{}", key);
         let (expected, result) = tr.run_test(&(TESTS_FOLDER.to_string() + "/" + key));
@@ -82,15 +72,15 @@ fn test_constructor() {
     }
 }
 
-//#[test]
-//fn test_field() {
-//    let tr = TestReader::new(&(TESTS_FOLDER.to_string() + "/field/*.lox"));
-//    for key in tr.iter() {
-//        println!("{}", key);
-//        let (expected, result) = tr.run_test(&(TESTS_FOLDER.to_string() + "/" + key));
-//        assert_eq!(expected, result)
-//    }
-//}
+#[test]
+fn test_field() {
+    let tr = TestReader::new(&(TESTS_FOLDER.to_string() + "/field/*.lox"));
+    for key in tr.iter() {
+        println!("{}", key);
+        let (expected, result) = tr.run_test(&(TESTS_FOLDER.to_string() + "/" + key));
+        assert_eq!(expected, result)
+    }
+}
 
 #[test]
 fn test_for() {

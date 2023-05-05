@@ -144,6 +144,10 @@ impl Interpreter {
             .define(name, value);
     }
 
+    pub fn get_symbol(&self, name: &str) -> Result<Option<Expr>, Error> {
+        Ok(self.environments.as_ref().unwrap().borrow().retrieve(name))
+    }
+
     pub fn get_symbol_at(&self, mut pos: isize, name: &str) -> Result<Option<Expr>, Error> {
         if pos < 0 {
             return Err(Error::new("Invalid position".to_string()));
@@ -246,8 +250,13 @@ impl IVisitorStmt<Result<Option<Stmt>, Error>> for Interpreter {
     fn visit_print(&mut self, stmt: &Stmt) -> Result<Option<Stmt>, Error> {
         match stmt {
             Stmt::Print(Print { expr }) => {
-                let pv = expr.accept(self)?;
-                match pv {
+                let opv = expr.accept(self)?;
+                match opv {
+                    Some(Expr::Class(Class {
+                        name,
+                        methods: _,
+                        superclass: _,
+                    })) => println!("{:?}", Expr::Literal(Literal::Str(name))),
                     Some(pv) => println!("{:?}", pv),
                     None => println!("None"),
                 }
@@ -497,7 +506,16 @@ impl IVisitorExpr<Result<Option<Expr>, Error>> for Interpreter {
 
     fn visit_call(self: &mut Interpreter, expr: &Expr) -> Result<Option<Expr>, Error> {
         if let Expr::Call(call) = expr {
-            let callee_accepted = call.callee.accept(self).unwrap().unwrap();
+            let callee_accepted = match call.callee.accept(self) {
+                Ok(Some(callee)) => callee,
+                Ok(None) => {
+                    return Err(Error::new(
+                        "Can only call functions and classes.".to_string(),
+                    ))
+                }
+                Err(e) => return Err(e),
+            };
+
             let args: Vec<Expr> = call
                 .arguments
                 .iter()
@@ -526,7 +544,9 @@ impl IVisitorExpr<Result<Option<Expr>, Error>> for Interpreter {
                     }
                 }
                 Expr::Class(class) => Ok(Some(class.execute_call(self, args))),
-                _ => Err(Error::new("Invalid call".to_string())),
+                _ => Err(Error::new(
+                    "Can only call functions and classes.".to_string(),
+                )),
             }
         } else {
             Err(Error::new("Invalid statement".to_string()))
@@ -535,9 +555,11 @@ impl IVisitorExpr<Result<Option<Expr>, Error>> for Interpreter {
 
     fn visit_get(&mut self, expr: &Expr) -> Result<Option<Expr>, Error> {
         if let Expr::Get(Get { object, name }) = expr {
-            let accepted_object = object.accept(self).unwrap().unwrap();
+            let accepted_object = object.accept(self);
             match accepted_object {
-                Expr::Instance(instance) => Ok(Some(instance.get_field(name.lexeme.as_str())?)),
+                Ok(Some(Expr::Instance(instance))) => {
+                    Ok(Some(instance.get_field(name.lexeme.as_str())?))
+                }
                 _ => Err(Error::new("Only instances have properties.".to_string())),
             }
         } else {

@@ -38,27 +38,21 @@ fn run_test(path: &String) {
     let mut interpreter: Interpreter = Interpreter::new();
 
     let only_ok = ast.iter().filter(|result| result.is_ok());
-    if only_ok.count() == ast.len() {
-        let mut resolver: Resolver = Resolver::new(&mut interpreter);
-        apply_visitor(&mut resolver, &ast);
-    } else {
+    if only_ok.count() != ast.len() {
         let only_err = ast.iter().filter(|result| result.is_err());
         for err in only_err {
             println!("{:?}", err.as_ref().unwrap_err().msg);
             return;
         }
+    }
+    let mut resolver: Resolver = Resolver::new(&mut interpreter);
+    let res = apply_visitor(&mut resolver, &ast);
+
+    if !res {
+        return;
     }
 
-    let only_ok = ast.iter().filter(|result| result.is_ok());
-    if only_ok.count() == ast.len() {
-        apply_visitor(&mut interpreter, &ast);
-    } else {
-        let only_err = ast.iter().filter(|result| result.is_err());
-        for err in only_err {
-            println!("{:?}", err.as_ref().unwrap_err().msg);
-            return;
-        }
-    }
+    apply_visitor(&mut interpreter, &ast);
 
     let _ = ast.iter().filter(|result| result.is_err());
 }
@@ -66,18 +60,22 @@ fn run_test(path: &String) {
 type ResultStmt = Result<Option<Stmt>, Error>;
 type ResultExpr = Result<Option<Expr>, Error>;
 
-fn apply_visitor<T>(visitor: &mut T, ast: &Vec<Result<Stmt, Error>>)
+fn apply_visitor<T>(visitor: &mut T, ast: &Vec<Result<Stmt, Error>>) -> bool
 where
     T: IVisitorExpr<ResultExpr> + IVisitorStmt<ResultStmt>,
 {
     for stmt in ast {
         let value = stmt.as_ref().unwrap().accept(visitor);
         match value {
-            Err(Error { msg }) => println!("{:?}", msg),
+            Err(Error { msg }) => {
+                println!("{:?}", msg);
+                return false;
+            }
             Ok(Some(v)) => println!("{:?}", v),
             _ => continue,
         }
     }
+    true
 }
 
 fn run(source: &String) -> bool {
@@ -90,27 +88,21 @@ fn run(source: &String) -> bool {
     let mut interpreter: Interpreter = Interpreter::new();
 
     let only_ok = ast.iter().filter(|result| result.is_ok());
-    if only_ok.count() == ast.len() {
-        let mut resolver: Resolver = Resolver::new(&mut interpreter);
-        apply_visitor(&mut resolver, &ast);
-    } else {
+    if only_ok.count() != ast.len() {
         let only_err = ast.iter().filter(|result| result.is_err());
         for err in only_err {
             println!("{:?}", err.as_ref().unwrap_err().msg);
-            return false;
+            return true;
         }
+    }
+    let mut resolver: Resolver = Resolver::new(&mut interpreter);
+    let res = apply_visitor(&mut resolver, &ast);
+
+    if !res {
+        return true;
     }
 
-    let only_ok = ast.iter().filter(|result| result.is_ok());
-    if only_ok.count() == ast.len() {
-        apply_visitor(&mut interpreter, &ast);
-    } else {
-        let only_err = ast.iter().filter(|result| result.is_err());
-        for err in only_err {
-            println!("{:?}", err.as_ref().unwrap_err().msg);
-            return false;
-        }
-    }
+    apply_visitor(&mut interpreter, &ast);
     let _ = ast.iter().filter(|result| result.is_err());
 
     false

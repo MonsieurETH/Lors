@@ -1,5 +1,6 @@
 use std::cell::RefCell;
 use std::collections::BTreeMap;
+use std::fmt::{Debug, Display, Formatter};
 use std::rc::Rc;
 
 use ordered_float::OrderedFloat;
@@ -225,7 +226,6 @@ impl Function {
             Some(Stmt::Return(Return { keyword: _, value })) => {
                 if is_initializer {
                     return interpreter.get_symbol_at(0, "this").unwrap().unwrap();
-                    //FIXME (double unwrap)
                 }
                 return value;
             }
