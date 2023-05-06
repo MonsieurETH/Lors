@@ -3,7 +3,7 @@ use crate::{
     lexer::{Token, TokenType},
 };
 
-#[derive(Debug, Clone, PartialEq, PartialOrd, Ord, Eq)]
+#[derive(Debug, Clone, PartialEq, Ord, PartialOrd, Eq, Hash)]
 pub enum Operator {
     Bang,
     BangEqual,

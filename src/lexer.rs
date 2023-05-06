@@ -58,15 +58,16 @@ pub enum TokenType {
     Eof,
 }
 
-#[derive(Debug, Clone, PartialEq, PartialOrd, Ord, Eq)]
+#[derive(Debug, Clone, PartialEq, Ord, PartialOrd, Eq, Hash)]
 pub struct Token {
     pub token_type: TokenType,
     pub lexeme: String,
     pub literal: Option<TokenLiteral>,
-    line: usize,
+    pub line: usize,
+    pub pos: usize,
 }
 
-#[derive(Debug, Clone, PartialEq, PartialOrd, Ord, Eq)]
+#[derive(Debug, Clone, PartialEq, Ord, PartialOrd, Eq, Hash)]
 pub enum TokenLiteral {
     Str(String),
     Number(ordered_float::OrderedFloat<f64>),
@@ -94,6 +95,7 @@ impl Lexer {
             lexeme: "".to_owned(),
             literal: None,
             line: self.line,
+            pos: self.current,
         });
     }
 
@@ -241,6 +243,7 @@ impl Lexer {
             lexeme: text.to_owned(),
             literal: literal,
             line: self.line,
+            pos: self.current,
         });
     }
 

@@ -1,6 +1,6 @@
 use std::cell::RefCell;
 use std::collections::BTreeMap;
-use std::fmt::{Debug, Display, Formatter};
+use std::fmt::Debug;
 use std::rc::Rc;
 
 use ordered_float::OrderedFloat;

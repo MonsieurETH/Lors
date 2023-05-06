@@ -376,10 +376,10 @@ impl<'a> IVisitorExpr<Result<Option<Expr>, Error>> for Resolver<'a> {
     }
 
     fn visit_assign(&mut self, expr: &Expr) -> Result<Option<Expr>, Error> {
-        if let Expr::Assign(Assign { var, expr }) = expr {
+        if let Expr::Assign(Assign { var, expr: value }) = expr {
             let Var::Token(token) = var;
-            expr.accept(self)?;
-            self.resolve_local(&mut expr.clone(), &token.lexeme);
+            value.accept(self)?;
+            self.resolve_local(expr, &token.lexeme);
             Ok(None)
         } else {
             panic!("Invalid expression");

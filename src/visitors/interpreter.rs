@@ -1,5 +1,7 @@
 use std::cell::RefCell;
-use std::collections::BTreeMap;
+use std::collections::hash_map::DefaultHasher;
+use std::collections::{BTreeMap, HashMap};
+use std::hash::{Hash, Hasher};
 use std::rc::Rc;
 
 use crate::ast::{
@@ -78,10 +80,7 @@ impl<'a> Iterator for EnvironmentIterator<'a> {
         }
         self.pos += 1;
 
-        match env {
-            None => None,
-            Some(e) => Some(e),
-        }
+        env
     }
 }
 
@@ -144,10 +143,6 @@ impl Interpreter {
             .define(name, value);
     }
 
-    pub fn get_symbol(&self, name: &str) -> Result<Option<Expr>, Error> {
-        Ok(self.environments.as_ref().unwrap().borrow().retrieve(name))
-    }
-
     pub fn get_symbol_at(&self, mut pos: isize, name: &str) -> Result<Option<Expr>, Error> {
         if pos < 0 {
             return Err(Error::new("Invalid position".to_string()));
@@ -197,7 +192,9 @@ impl Interpreter {
     }
 
     fn lookup_symbol(&self, name: &str, expr: &Expr) -> Result<Option<Expr>, Error> {
-        let distance = self.locals.get(expr);
+        //let hash = Self::calculate_hash(expr);
+        // Need to implement a better way to get this hash
+        let distance = self.locals.get(&expr);
 
         match distance {
             Some(distance) => self.get_symbol_at(*distance as isize, name),
@@ -205,7 +202,17 @@ impl Interpreter {
         }
     }
 
+    /*fn calculate_hash<T>(obj: T) -> u64
+    where
+        T: Hash,
+    {
+        let mut hasher = DefaultHasher::new();
+        obj.hash(&mut hasher);
+        hasher.finish()
+    }*/
+
     pub fn resolve(&mut self, expr: &Expr, depth: usize) {
+        //let hash = Self::calculate_hash(expr);
         self.locals.insert(expr.clone(), depth);
     }
 
@@ -447,13 +454,14 @@ impl IVisitorExpr<Result<Option<Expr>, Error>> for Interpreter {
     }
 
     fn visit_assign(&mut self, expr: &Expr) -> Result<Option<Expr>, Error> {
-        if let Expr::Assign(Assign { var, expr }) = expr {
+        if let Expr::Assign(Assign { var, expr: value }) = expr {
             let Var::Token(token) = var;
             let var_name: String = token.lexeme.to_owned();
 
             if self.check_symbol(&var_name) {
-                let accepted_expr = expr.accept(self).unwrap().unwrap();
-                let distance = self.locals.get(&expr);
+                let accepted_expr = value.accept(self).unwrap().unwrap();
+                //let hash = Self::calculate_hash(expr);
+                let distance = self.locals.get(expr);
 
                 match distance {
                     Some(distance) => {
@@ -601,7 +609,8 @@ impl IVisitorExpr<Result<Option<Expr>, Error>> for Interpreter {
 
     fn visit_super(&mut self, expr: &Expr) -> Result<Option<Expr>, Error> {
         if let Expr::Super(Super { keyword: _, method }) = expr {
-            let distance = self.locals.get(expr).unwrap();
+            //let hash = Self::calculate_hash(expr);
+            let distance = self.locals.get(&expr).unwrap();
 
             let d = *distance;
             let superclass = self.get_symbol_at(d as isize, "super").unwrap().unwrap();

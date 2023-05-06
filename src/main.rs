@@ -13,7 +13,6 @@ use visitors::{interpreter::Interpreter, resolver::Resolver};
 
 fn main() {
     let args: Vec<String> = env::args().collect();
-    //println!("{:?}", args);
     match args.len() {
         2 => run_file(&args[1]),
         3 => run_test(&args[1]),
@@ -64,18 +63,19 @@ fn apply_visitor<T>(visitor: &mut T, ast: &Vec<Result<Stmt, Error>>) -> bool
 where
     T: IVisitorExpr<ResultExpr> + IVisitorStmt<ResultStmt>,
 {
+    let mut clean = true;
     for stmt in ast {
         let value = stmt.as_ref().unwrap().accept(visitor);
         match value {
             Err(Error { msg }) => {
                 println!("{:?}", msg);
-                return false;
+                clean = false;
             }
             Ok(Some(v)) => println!("{:?}", v),
             _ => continue,
         }
     }
-    true
+    clean
 }
 
 fn run(source: &String) -> bool {

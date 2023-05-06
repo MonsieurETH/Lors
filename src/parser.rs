@@ -117,7 +117,7 @@ impl Parser {
         let mut superclass: Option<Box<Expr>> = None;
         if self.ismatch(&[TokenType::Less])? {
             self.consume(TokenType::Identifier, "Expect superclass name.")?;
-            superclass = Some(Box::new(Expr::Var(Var::Token(self.previous()?.clone()))));
+            superclass = Some(Box::new(Expr::Var(Var::Token(self.previous()?))));
         }
         self.consume(TokenType::LeftBrace, "Expect '{' before class body.")?;
 
@@ -174,7 +174,7 @@ impl Parser {
     }
 
     fn return_stmt(&mut self) -> Result<Stmt, Error> {
-        let keyword: Token = self.previous()?.clone();
+        let keyword: Token = self.previous()?;
         let mut value: Option<Expr> = None;
         if !self.check(&TokenType::Semicolon) {
             value = Some(self.expression()?);
@@ -319,7 +319,7 @@ impl Parser {
     fn or(&mut self) -> Result<Expr, Error> {
         let mut expr: Expr = self.and()?;
         while self.ismatch(&[TokenType::Or])? {
-            let operator: Operator = Operator::from_token(self.previous()?);
+            let operator: Operator = Operator::from_token(&self.previous()?);
             let right: Expr = self.and()?;
             expr = Expr::Logical(Logical {
                 left: Box::new(expr),
@@ -333,7 +333,7 @@ impl Parser {
     fn and(&mut self) -> Result<Expr, Error> {
         let mut expr: Expr = self.equality()?;
         while self.ismatch(&[TokenType::And])? {
-            let operator: Operator = Operator::from_token(self.previous()?);
+            let operator: Operator = Operator::from_token(&self.previous()?);
             let right: Expr = self.and()?;
             expr = Expr::Logical(Logical {
                 left: Box::new(expr),
@@ -348,7 +348,7 @@ impl Parser {
         let mut expr: Expr = self.comparison()?;
 
         while self.ismatch(&[TokenType::BangEqual, TokenType::EqualEqual])? {
-            let operator: Operator = Operator::from_token(self.previous()?);
+            let operator: Operator = Operator::from_token(&self.previous()?);
             let right: Expr = self.comparison()?;
             expr = Expr::Binary(Binary {
                 left: Box::new(expr),
@@ -369,7 +369,7 @@ impl Parser {
             TokenType::Less,
             TokenType::LessEqual,
         ])? {
-            let operator: Operator = Operator::from_token(self.previous()?);
+            let operator: Operator = Operator::from_token(&self.previous()?);
             let right: Expr = self.term()?;
             expr = Expr::Binary(Binary {
                 left: Box::new(expr),
@@ -385,7 +385,7 @@ impl Parser {
         let mut expr: Expr = self.factor()?;
 
         while self.ismatch(&[TokenType::Minus, TokenType::Plus])? {
-            let operator: Operator = Operator::from_token(self.previous()?);
+            let operator: Operator = Operator::from_token(&self.previous()?);
             let right: Expr = self.factor()?;
             expr = Expr::Binary(Binary {
                 left: Box::new(expr),
@@ -401,7 +401,7 @@ impl Parser {
         let mut expr: Expr = self.unary()?;
 
         while self.ismatch(&[TokenType::Slash, TokenType::Star])? {
-            let operator: Operator = Operator::from_token(self.previous()?);
+            let operator: Operator = Operator::from_token(&self.previous()?);
             let right: Expr = self.unary()?;
             expr = Expr::Binary(Binary {
                 left: Box::new(expr),
@@ -415,7 +415,7 @@ impl Parser {
 
     fn unary(&mut self) -> Result<Expr, Error> {
         if self.ismatch(&[TokenType::Bang, TokenType::Minus])? {
-            let operator: Operator = Operator::from_token(self.previous()?);
+            let operator: Operator = Operator::from_token(&self.previous()?);
             let right: Expr = self.factor()?;
             let expr = Expr::Unary(Unary {
                 operator,
@@ -495,10 +495,10 @@ impl Parser {
             }))
         } else if self.ismatch(&[TokenType::This])? {
             Ok(Expr::This(This {
-                keyword: self.previous()?.to_owned(),
+                keyword: self.previous()?,
             }))
         } else if self.ismatch(&[TokenType::Super])? {
-            let keyword = self.previous()?.to_owned();
+            let keyword = self.previous()?;
             self.consume(TokenType::Dot, "Expect '.' after 'super'.")?;
             let method = self.consume(TokenType::Identifier, "Expect superclass method name.")?;
             Ok(Expr::Super(Super {
@@ -506,7 +506,7 @@ impl Parser {
                 method: method.clone(),
             }))
         } else if self.ismatch(&[TokenType::Identifier])? {
-            Ok(Expr::Var(Var::Token(self.previous()?.to_owned())))
+            Ok(Expr::Var(Var::Token(self.previous()?)))
         } else {
             Err(Error {
                 msg: "Invalid type".to_string(),
@@ -532,7 +532,7 @@ impl Parser {
         self.peek().token_type == *token_type
     }
 
-    fn advance(&mut self) -> Result<&Token, Error> {
+    fn advance(&mut self) -> Result<Token, Error> {
         if !self.is_at_end() {
             self.current += 1;
         }
@@ -547,16 +547,16 @@ impl Parser {
         self.tokens.get(self.current).unwrap()
     }
 
-    fn previous(&mut self) -> Result<&Token, Error> {
+    fn previous(&mut self) -> Result<Token, Error> {
         match self.tokens.get(self.current - 1) {
-            Some(token) => Ok(token),
+            Some(token) => Ok(token.clone()),
             None => Err(Error {
                 msg: format!("No previous token"),
             }),
         }
     }
 
-    fn consume(&mut self, token_type: TokenType, message: &str) -> Result<&Token, Error> {
+    fn consume(&mut self, token_type: TokenType, message: &str) -> Result<Token, Error> {
         if self.check(&token_type) {
             self.advance()
         } else {
