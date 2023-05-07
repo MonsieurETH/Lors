@@ -80,6 +80,10 @@ impl TestReader {
                         comments.push(Ok(Expr::Literal(Literal::Number(
                             expected.parse().unwrap(),
                         ))));
+                    } else if expected.chars().nth(0).unwrap() == '-' {
+                        comments.push(Ok(Expr::Literal(Literal::Number(
+                            expected.parse().unwrap(),
+                        ))));
                     } else if expected.as_str() == "true" {
                         comments.push(Ok(Expr::Literal(Literal::Bool(true))));
                     } else if expected.as_str() == "false" {

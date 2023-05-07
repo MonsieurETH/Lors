@@ -489,7 +489,6 @@ impl Parser {
         } else if self.ismatch(&[TokenType::LeftParen])? {
             let expr: Expr = self.expression()?;
             self.consume(TokenType::RightParen, "Expected ')' after expression.")?;
-
             Ok(Expr::Grouping(Grouping {
                 group: Box::new(expr),
             }))
@@ -508,8 +507,12 @@ impl Parser {
         } else if self.ismatch(&[TokenType::Identifier])? {
             Ok(Expr::Var(Var::Token(self.previous()?)))
         } else {
+            let peek = self.peek();
             Err(Error {
-                msg: "Invalid type".to_string(),
+                msg: format!(
+                    "[line {:}] Error at '{:}': Expect expression.",
+                    peek.line, peek.lexeme
+                ),
             })
         }
     }

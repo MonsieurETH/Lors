@@ -197,7 +197,6 @@ impl Interpreter {
 
     fn lookup_symbol(&self, name: &str, expr: &Expr) -> Result<Option<Expr>, Error> {
         //let hash = Self::calculate_hash(expr);
-        // Need to implement a better way to get this hash
         let distance = self.locals.get(&expr);
 
         match distance {
@@ -288,6 +287,7 @@ impl IVisitorStmt<Result<Option<Stmt>, Error>> for Interpreter {
     }
 
     fn visit_if(&mut self, stmt: &Stmt) -> Result<Option<Stmt>, Error> {
+        let mut res = Ok(None);
         if let Stmt::If(If {
             condition,
             branch_true,
@@ -295,33 +295,47 @@ impl IVisitorStmt<Result<Option<Stmt>, Error>> for Interpreter {
         }) = stmt
         {
             let eval_condition = condition.accept(self).unwrap();
-            if let Some(Expr::Literal(Literal::Bool(b))) = eval_condition {
+            res = if let Some(Expr::Literal(Literal::Bool(b))) = eval_condition {
                 match b {
                     true => branch_true.accept(self),
                     false => branch_false.accept(self),
-                }?;
-            }
+                }
+            } else {
+                Err(Error::new("Invalid condition".to_string()))
+            };
         }
-        Ok(None)
+        res
     }
 
     fn visit_while(&mut self, stmt: &Stmt) -> Result<Option<Stmt>, Error> {
+        let mut res = Ok(None);
         if let Stmt::While(While { condition, body }) = stmt {
             let mut accepted_cond = condition.accept(self).unwrap();
             while let Some(Expr::Literal(Literal::Bool(true))) = accepted_cond {
-                accepted_cond = condition.accept(self).unwrap();
-                _ = body.accept(self)
+                res = body.accept(self);
+                match res {
+                    Ok(Some(Stmt::Return(_))) => {
+                        accepted_cond = Some(Expr::Literal(Literal::Bool(false)))
+                    }
+                    Ok(_) => accepted_cond = condition.accept(self).unwrap(),
+                    Err(e) => return Err(e),
+                }
             }
         }
-        Ok(None)
+        res
     }
 
     fn visit_block(&mut self, stmt: &Stmt) -> Result<Option<Stmt>, Error> {
         if let Stmt::Block(Block { stmts }) = stmt {
             self.new_environment(None);
-            self.execute_block(stmts, self.get_actual_env())?;
+            let res = match self.execute_block(stmts, self.get_actual_env()) {
+                Ok(Some(Stmt::Return(r))) => Ok(Some(Stmt::Return(r))),
+                Ok(_) => Ok(None),
+                Err(e) => Err(e),
+            };
+
             self.drop_environment();
-            Ok(None)
+            res
         } else {
             Err(Error::new("Invalid statement".to_string()))
         }
