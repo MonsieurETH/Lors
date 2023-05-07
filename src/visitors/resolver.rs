@@ -100,14 +100,14 @@ impl<'a> Resolver<'a> {
         self.scopes.last_mut().unwrap().define(name, true);
     }
 
-    pub fn get(&self, name: &str) -> Option<bool> {
+    pub fn get(&self, name: &str) -> Result<Option<bool>, Error> {
         for env in self.scopes.iter().rev() {
             let symbol = env.retrieve(name);
             if symbol.is_some() {
-                return symbol;
+                return Ok(symbol);
             }
         }
-        None
+        Err(Error::new(format!("Undefined variable '{:}'.", name)))
     }
 
     pub fn resolve_local(&mut self, expr: &Expr, name: &str) {
@@ -322,7 +322,7 @@ impl<'a> IVisitorStmt<Result<Option<Stmt>, Error>> for Resolver<'a> {
 impl<'a> IVisitorExpr<Result<Option<Expr>, Error>> for Resolver<'a> {
     fn visit_var(&mut self, expr: &Expr) -> Result<Option<Expr>, Error> {
         if let Expr::Var(Var::Token(token)) = expr {
-            if !(self.scopes.len() == 0) && (self.get(&token.lexeme).unwrap() == false) {
+            if !(self.scopes.len() == 0) && (self.get(&token.lexeme)? == None) {
                 Err(Error::new(format!(
                     "Can't read local variable in its own initializer."
                 )))

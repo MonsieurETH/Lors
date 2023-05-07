@@ -1,1 +1,2 @@
-true.foo = "value"; // expect runtime error: Only instances have fields.
+undefined1.bar // expect runtime error: Undefined variable 'undefined1'.
+  = undefined2;
