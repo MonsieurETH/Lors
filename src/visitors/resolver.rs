@@ -404,10 +404,10 @@ impl<'a> IVisitorExpr<Result<Option<Expr>, Error>> for Resolver<'a> {
     fn visit_call(&mut self, expr: &Expr) -> Result<Option<Expr>, Error> {
         if let Expr::Call(call) = expr {
             call.callee.accept(self)?;
-            let _: Vec<Expr> = call
+            let _: Vec<_> = call
                 .arguments
                 .iter()
-                .map(|arg| arg.accept(self).unwrap().unwrap()) // ?
+                .map(|arg| arg.accept(self)) // ?
                 .collect();
             Ok(None)
         } else {
