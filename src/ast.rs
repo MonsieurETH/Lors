@@ -305,7 +305,7 @@ impl Instance {
                 match method {
                     Ok(Some(method)) => Ok(Expr::Function(method.bind(self))),
                     _ => Err(Error {
-                        msg: format!("Undefined property '{:?}'.", name),
+                        msg: format!("Undefined property '{:}'.", name),
                     }),
                 }
             }
