@@ -606,7 +606,21 @@ impl IVisitorExpr<Result<Option<Expr>, Error>> for Interpreter {
                     let value = value.accept(self).unwrap().unwrap();
                     instance.set_field(&name.lexeme, value.clone());
 
-                    self.define_symbol(&var_name.lexeme, Expr::Instance(instance));
+                    let distance = self.locals.get(object);
+
+                    match distance {
+                        Some(distance) => {
+                            self.assign_symbol_at(
+                                *distance,
+                                &var_name.lexeme,
+                                Expr::Instance(instance),
+                            )?;
+                        }
+                        None => {
+                            self.globals
+                                .insert(var_name.lexeme.to_string(), Expr::Instance(instance));
+                        }
+                    }
                     Ok(Some(value))
                 }
                 _ => Err(Error::new("Only instances have fields.".to_string())),
