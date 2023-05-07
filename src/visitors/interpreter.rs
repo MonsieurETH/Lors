@@ -1,6 +1,7 @@
 use std::cell::RefCell;
 use std::collections::hash_map::DefaultHasher;
 use std::collections::{BTreeMap, HashMap};
+use std::env;
 use std::hash::{Hash, Hasher};
 use std::rc::Rc;
 
@@ -101,14 +102,17 @@ impl Interpreter {
         }
     }
 
-    pub fn new_environment(&mut self) {
-        let env = Environment::new_with_enclosing(self.get_actual_env());
-        self.environments = Some(Rc::new(RefCell::new(env)));
-        self.counter += 1;
+    pub fn create_environment(&mut self, context: Option<Rc<RefCell<Environment>>>) -> Environment {
+        let enclosing = match context {
+            Some(env) => Some(env),
+            None => self.get_actual_env(),
+        };
+        let env = Environment::new_with_enclosing(enclosing);
+        return env;
     }
 
-    pub fn new_environment_with_enclosing(&mut self, enclosing: Option<Rc<RefCell<Environment>>>) {
-        let env = Environment::new_with_enclosing(enclosing);
+    pub fn new_environment(&mut self, context: Option<Rc<RefCell<Environment>>>) {
+        let env = self.create_environment(context);
         self.environments = Some(Rc::new(RefCell::new(env)));
         self.counter += 1;
     }
@@ -212,7 +216,6 @@ impl Interpreter {
     }*/
 
     pub fn resolve(&mut self, expr: &Expr, depth: usize) {
-        //let hash = Self::calculate_hash(expr);
         self.locals.insert(expr.clone(), depth);
     }
 
@@ -315,7 +318,7 @@ impl IVisitorStmt<Result<Option<Stmt>, Error>> for Interpreter {
 
     fn visit_block(&mut self, stmt: &Stmt) -> Result<Option<Stmt>, Error> {
         if let Stmt::Block(Block { stmts }) = stmt {
-            self.new_environment();
+            self.new_environment(None);
             self.execute_block(stmts, self.get_actual_env())?;
             self.drop_environment();
             Ok(None)
@@ -371,7 +374,7 @@ impl IVisitorStmt<Result<Option<Stmt>, Error>> for Interpreter {
                     _ => return Err(Error::new("Superclass must be a class".to_string())),
                 }
 
-                self.new_environment_with_enclosing(self.get_actual_env());
+                self.new_environment(self.get_actual_env());
                 self.define_symbol("super", accepted_superclass.clone().unwrap());
 
                 Some(Box::new(accepted_superclass.unwrap()))
@@ -648,12 +651,12 @@ mod tests {
         assert_eq!(interpreter.locals.len(), 0);
         assert_eq!(interpreter.counter, 1);
 
-        interpreter.new_environment();
+        interpreter.new_environment(None);
         assert_eq!(interpreter.globals.len(), 0);
         assert_eq!(interpreter.locals.len(), 0);
         assert_eq!(interpreter.counter, 2);
 
-        interpreter.new_environment();
+        interpreter.new_environment(None);
         assert_eq!(interpreter.globals.len(), 0);
         assert_eq!(interpreter.locals.len(), 0);
         assert_eq!(interpreter.counter, 3);
@@ -686,13 +689,13 @@ mod tests {
         assert_eq!(interpreter.counter, 1);
         interpreter.define_symbol("a", Expr::Literal(Literal::Number(OrderedFloat(1.0))));
 
-        interpreter.new_environment();
+        interpreter.new_environment(None);
         assert_eq!(interpreter.globals.len(), 0);
         assert_eq!(interpreter.locals.len(), 0);
         assert_eq!(interpreter.counter, 2);
         interpreter.define_symbol("b", Expr::Literal(Literal::Number(OrderedFloat(2.0))));
 
-        interpreter.new_environment();
+        interpreter.new_environment(None);
         assert_eq!(interpreter.globals.len(), 0);
         assert_eq!(interpreter.locals.len(), 0);
         assert_eq!(interpreter.counter, 3);

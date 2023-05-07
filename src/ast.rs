@@ -209,19 +209,18 @@ impl Function {
             is_initializer,
         } = self;
 
-        interpreter.new_environment_with_enclosing(context);
+        let mut env = interpreter.create_environment(context);
 
         for (i, arg) in args.into_iter().enumerate() {
             let Var::Token(token) = parameters.get(i).unwrap();
-            interpreter.define_symbol(token.lexeme.as_str(), arg);
+            env.define(&token.lexeme, arg)
         }
         //TODO globals here
 
         let res: Option<Stmt> = interpreter
-            .execute_block(&body, interpreter.get_actual_env())
+            .execute_block(&body, Some(Rc::new(RefCell::new(env))))
             .unwrap();
 
-        interpreter.drop_environment();
         match res {
             Some(Stmt::Return(Return { keyword: _, value })) => {
                 if is_initializer {
