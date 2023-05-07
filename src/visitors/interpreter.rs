@@ -599,7 +599,6 @@ impl IVisitorExpr<Result<Option<Expr>, Error>> for Interpreter {
             value,
         }) = expr
         {
-            let var_name = extract_enum_value!(object.as_ref(), Expr::Var(Var::Token(t)) => t);
             let accepted_object = object.accept(self).unwrap().unwrap();
             match accepted_object {
                 Expr::Instance(mut instance) => {
@@ -607,6 +606,9 @@ impl IVisitorExpr<Result<Option<Expr>, Error>> for Interpreter {
                     instance.set_field(&name.lexeme, value.clone());
 
                     let distance = self.locals.get(object);
+
+                    let var_name =
+                        extract_enum_value!(object.as_ref(), Expr::Var(Var::Token(t)) => t);
 
                     match distance {
                         Some(distance) => {
