@@ -1,14 +1,12 @@
-class Foo {
-  init(arg) {
-    print "Foo.init(" + arg + ")";
-    this.field = "init";
-  }
+fun isEven(n) {
+  if (n == 0) return true;
+  return isOdd(n - 1);
 }
 
-var foo = Foo("one"); // expect: Foo.init(one)
-foo.field = "field";
+fun isOdd(n) {
+  if (n == 0) return false;
+  return isEven(n - 1);
+}
 
-var foo2 = foo.init("two"); // expect: Foo.init(two)
-print foo2; // expect: Foo
-
-print foo.field; // expect: init
+print isEven(4); // expect: true
+print isOdd(3); // expect: true

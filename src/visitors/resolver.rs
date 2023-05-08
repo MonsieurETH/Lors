@@ -255,7 +255,7 @@ impl<'a> IVisitorStmt<Result<Option<Stmt>, Error>> for Resolver<'a> {
                             keyword.lexeme
                         )));
                     }
-                    value.accept(self).unwrap();
+                    value.accept(self)?;
                 }
                 Ok(None)
             }
