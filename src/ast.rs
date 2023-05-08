@@ -200,35 +200,46 @@ impl From<crate::ast::Token> for crate::ast::Literal {
 }
 
 impl Function {
-    pub fn execute_call(self, interpreter: &mut Interpreter, args: Vec<Expr>) -> Expr {
+    pub fn execute_call(
+        self,
+        interpreter: &mut Interpreter,
+        args: Vec<Expr>,
+    ) -> Result<Expr, Error> {
         let Function {
-            name: _,
+            name,
             parameters,
             body,
             context,
             is_initializer,
         } = self;
 
-        let mut env = interpreter.create_environment(context);
+        let context = context.unwrap();
+        let mut env = interpreter.create_environment(Some(Rc::clone(&context)));
+
+        if args.len() != parameters.len() {
+            return Err(Error::new(format!(
+                "Invalid number of arguments (got {}, expected {}).",
+                args.len(),
+                parameters.len()
+            )));
+        }
 
         for (i, arg) in args.into_iter().enumerate() {
             let Var::Token(token) = parameters.get(i).unwrap();
             env.define(&token.lexeme, arg)
         }
         //TODO globals here
-
         let res: Option<Stmt> = interpreter
             .execute_block(&body, Some(Rc::new(RefCell::new(env))))
             .unwrap();
 
+        if is_initializer {
+            return Ok(context.as_ref().borrow().retrieve("this").unwrap());
+        }
+
         match res {
-            Some(Stmt::Return(Return { keyword: _, value })) => {
-                if is_initializer {
-                    return interpreter.get_symbol_at(0, "this").unwrap().unwrap();
-                }
-                return value;
-            }
-            _ => Expr::Literal(Literal::Nil),
+            Some(Stmt::Return(Return { keyword: _, value })) => Ok(value),
+            _ => Ok(Expr::Literal(Literal::Nil)),
         }
     }
 
@@ -267,7 +278,11 @@ impl Function {
 }
 
 impl Class {
-    pub fn execute_call(self, interpreter: &mut Interpreter, args: Vec<Expr>) -> Expr {
+    pub fn execute_call(
+        self,
+        interpreter: &mut Interpreter,
+        args: Vec<Expr>,
+    ) -> Result<Expr, Error> {
         let instance = Instance {
             class: Box::new(self.clone()),
             fields: BTreeMap::new(),
@@ -275,11 +290,21 @@ impl Class {
         let init = self.find_method("init");
         match init {
             Ok(Some(init)) => {
-                init.bind(&instance).execute_call(interpreter, args); //FIXME
+                init.bind(&instance).execute_call(interpreter, args)
+                //FIXME
             }
-            _ => (),
+            _ => {
+                if args.len() != 0 {
+                    return Err(Error::new(format!(
+                        "Invalid number of arguments (got {}, expected {}).",
+                        args.len(),
+                        0
+                    )));
+                }
+                Ok(Expr::Instance(instance))
+            }
         }
-        Expr::Instance(instance)
+        //Expr::Instance(instance)
     }
 
     pub fn find_method(&self, name: &str) -> Result<Option<Function>, Error> {

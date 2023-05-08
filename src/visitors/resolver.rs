@@ -140,7 +140,7 @@ impl<'a> Resolver<'a> {
             }
 
             for stmt in body {
-                stmt.accept(self).unwrap();
+                stmt.accept(self)?;
             }
             self.end_scope();
             self.current_function = enclosing_function;
@@ -251,8 +251,8 @@ impl<'a> IVisitorStmt<Result<Option<Stmt>, Error>> for Resolver<'a> {
                 if *value != Expr::Literal(Literal::Nil) {
                     if self.current_function == FunctionType::Initializer {
                         return Err(Error::new(format!(
-                            "{:?} Can't return a value from an initializer.",
-                            keyword
+                            "Error at '{:}': Can't return a value from an initializer.",
+                            keyword.lexeme
                         )));
                     }
                     value.accept(self).unwrap();

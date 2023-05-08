@@ -6,7 +6,7 @@ class Foo {
 }
 
 fun init() {
-  print "not initializer";
+  print "not_initializer";
 }
 
-init(); // expect: not initializer
+init(); // expect: not_initializer

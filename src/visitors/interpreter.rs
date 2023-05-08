@@ -7,8 +7,8 @@ use std::rc::Rc;
 
 use crate::ast::{
     Assign, Binary, Block, Class, ClassDecl, Error, Expr, Expression, FunDecl, Function, Get,
-    Grouping, IVisitorExpr, IVisitorStmt, If, Literal, Logical, Print, Return, Set, Stmt, Super,
-    This, Unary, Var, VarDecl, While,
+    Grouping, IVisitorExpr, IVisitorStmt, If, Instance, Literal, Logical, Print, Return, Set, Stmt,
+    Super, This, Unary, Var, VarDecl, While,
 };
 use crate::operators::Operator;
 
@@ -266,6 +266,9 @@ impl IVisitorStmt<Result<Option<Stmt>, Error>> for Interpreter {
                         methods: _,
                         superclass: _,
                     })) => println!("{:?}", Expr::Literal(Literal::Str(name))),
+                    Some(Expr::Instance(Instance { class, fields: _ })) => {
+                        println!("{:?}", Expr::Literal(Literal::Str(class.name)))
+                    }
                     Some(pv) => println!("{:?}", pv),
                     None => println!("None"),
                 }
@@ -550,7 +553,7 @@ impl IVisitorExpr<Result<Option<Expr>, Error>> for Interpreter {
             match callee_accepted {
                 Expr::Function(fun) => {
                     let Function {
-                        name,
+                        name: _,
                         parameters,
                         body: _,
                         context: _,
@@ -558,17 +561,19 @@ impl IVisitorExpr<Result<Option<Expr>, Error>> for Interpreter {
                     } = &fun;
 
                     if args.len() != parameters.len() {
-                        Err(Error::new(format!(
-                            "Invalid number of arguments (got {}, expected {}) in {} call",
+                        return Err(Error::new(format!(
+                            "Invalid number of arguments (got {}, expected {})",
                             args.len(),
-                            parameters.len(),
-                            name
-                        )))
+                            parameters.len()
+                        )));
                     } else {
-                        Ok(Some(fun.execute_call(self, args)))
+                        Ok(Some(fun.execute_call(self, args)?))
                     }
                 }
-                Expr::Class(class) => Ok(Some(class.execute_call(self, args))),
+                Expr::Class(class) => {
+                    let a = 1;
+                    Ok(Some(class.execute_call(self, args)?))
+                }
                 _ => Err(Error::new(
                     "Can only call functions and classes.".to_string(),
                 )),
@@ -607,20 +612,23 @@ impl IVisitorExpr<Result<Option<Expr>, Error>> for Interpreter {
 
                     let distance = self.locals.get(object);
 
-                    let var_name =
-                        extract_enum_value!(object.as_ref(), Expr::Var(Var::Token(t)) => t);
+                    // This doesn't scale well, but it's the simplest way I can think of now
+                    let var_name = match object.as_ref() {
+                        Expr::Var(Var::Token(t)) => t.lexeme.as_str(),
+                        Expr::This(This { keyword }) => keyword.lexeme.as_str(),
+                        _ => {
+                            println!("Invalid object: {:?}", object);
+                            panic!("Invalid object")
+                        }
+                    };
 
                     match distance {
                         Some(distance) => {
-                            self.assign_symbol_at(
-                                *distance,
-                                &var_name.lexeme,
-                                Expr::Instance(instance),
-                            )?;
+                            self.assign_symbol_at(*distance, &var_name, Expr::Instance(instance))?;
                         }
                         None => {
                             self.globals
-                                .insert(var_name.lexeme.to_string(), Expr::Instance(instance));
+                                .insert(var_name.to_string(), Expr::Instance(instance));
                         }
                     }
                     Ok(Some(value))
@@ -642,7 +650,6 @@ impl IVisitorExpr<Result<Option<Expr>, Error>> for Interpreter {
 
     fn visit_super(&mut self, expr: &Expr) -> Result<Option<Expr>, Error> {
         if let Expr::Super(Super { keyword: _, method }) = expr {
-            //let hash = Self::calculate_hash(expr);
             let distance = self.locals.get(&expr).unwrap();
 
             let d = *distance;
