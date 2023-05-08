@@ -3,25 +3,25 @@ var g;
 
 {
   var local = "local";
-  fun f_() {
+  fun ff() {
     print local;
-    local = "after f";
+    local = "after_f";
     print local;
   }
-  f = f_;
+  f = ff;
 
-  fun g_() {
+  fun gg() {
     print local;
-    local = "after g";
+    local = "after_g";
     print local;
   }
-  g = g_;
+  g = gg;
 }
 
 f();
 // expect: local
-// expect: after f
+// expect: after_f
 
 g();
-// expect: after f
-// expect: after g
+// expect: after_f
+// expect: after_g

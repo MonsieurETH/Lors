@@ -2,10 +2,10 @@ var f;
 
 {
   var local = "local";
-  fun f_() {
+  fun ff() {
     print local;
   }
-  f = f_;
+  f = ff;
 }
 
 f(); // expect: local

@@ -2,11 +2,11 @@ var f;
 
 {
   var a = "a";
-  fun f_() {
+  fun ff() {
     print a;
     print a;
   }
-  f = f_;
+  f = ff;
 }
 
 f();

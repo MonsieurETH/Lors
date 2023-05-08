@@ -1,10 +1,10 @@
 var f;
 
 fun foo(param) {
-  fun f_() {
+  fun ff() {
     print param;
   }
-  f = f_;
+  f = ff;
 }
 foo("param");
 
