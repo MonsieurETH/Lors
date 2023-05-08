@@ -9,6 +9,6 @@ var foo = Foo("one"); // expect: Foo.init(one)
 foo.field = "field";
 
 var foo2 = foo.init("two"); // expect: Foo.init(two)
-print foo2; // expect: Foo instance
+print foo2; // expect: Foo
 
 print foo.field; // expect: init
