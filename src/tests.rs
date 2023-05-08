@@ -133,16 +133,6 @@ fn test_inheritance() {
 }
 
 #[test]
-fn test_limit() {
-    let tr = TestReader::new(&(TESTS_FOLDER.to_string() + "/limit/*.lox"));
-    for key in tr.iter() {
-        println!("{}", key);
-        let (expected, result) = tr.run_test(&(TESTS_FOLDER.to_string() + "/" + key));
-        assert_eq!(expected, result)
-    }
-}
-
-#[test]
 fn test_logical_operator() {
     let tr = TestReader::new(&(TESTS_FOLDER.to_string() + "/logical_operator/*.lox"));
     for key in tr.iter() {

@@ -385,7 +385,7 @@ impl IVisitorStmt<Result<Option<Stmt>, Error>> for Interpreter {
                         methods: _,
                         superclass: _,
                     })) => {}
-                    _ => return Err(Error::new("Superclass must be a class".to_string())),
+                    _ => return Err(Error::new("Superclass must be a class.".to_string())),
                 }
 
                 self.new_environment(self.get_actual_env());

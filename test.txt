@@ -1,3 +1,38 @@
-// [line 3] Error: Unexpected character.
-// [java line 3] Error at 'b': Expect ')' after arguments.
-foo(a | b);
+class Foo {
+  foo(a, b) {
+    this.field1 = a;
+    this.field2 = b;
+  }
+
+  fooPrint() {
+    print this.field1;
+    print this.field2;
+  }
+}
+
+class Bar < Foo {
+  bar(a, b) {
+    this.field1 = a;
+    this.field2 = b;
+  }
+
+  barPrint() {
+    print this.field1;
+    print this.field2;
+  }
+}
+
+var bar = Bar();
+bar.foo("foo_1", "foo_2");
+bar.fooPrint();
+// expect: foo_1
+// expect: foo_2
+
+bar.bar("bar_1", "bar_2");
+bar.barPrint();
+// expect: bar_1
+// expect: bar_2
+
+bar.fooPrint();
+// expect: bar_1
+// expect: bar_2

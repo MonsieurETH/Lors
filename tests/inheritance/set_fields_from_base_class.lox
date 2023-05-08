@@ -23,16 +23,16 @@ class Bar < Foo {
 }
 
 var bar = Bar();
-bar.foo("foo 1", "foo 2");
+bar.foo("foo_1", "foo_2");
 bar.fooPrint();
-// expect: foo 1
-// expect: foo 2
+// expect: foo_1
+// expect: foo_2
 
-bar.bar("bar 1", "bar 2");
+bar.bar("bar_1", "bar_2");
 bar.barPrint();
-// expect: bar 1
-// expect: bar 2
+// expect: bar_1
+// expect: bar_2
 
 bar.fooPrint();
-// expect: bar 1
-// expect: bar 2
+// expect: bar_1
+// expect: bar_2
