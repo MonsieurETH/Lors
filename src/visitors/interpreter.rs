@@ -1,8 +1,5 @@
 use std::cell::RefCell;
-use std::collections::hash_map::DefaultHasher;
-use std::collections::{BTreeMap, HashMap};
-use std::env;
-use std::hash::{Hash, Hasher};
+use std::collections::BTreeMap;
 use std::rc::Rc;
 
 use crate::ast::{
@@ -570,10 +567,7 @@ impl IVisitorExpr<Result<Option<Expr>, Error>> for Interpreter {
                         Ok(Some(fun.execute_call(self, args)?))
                     }
                 }
-                Expr::Class(class) => {
-                    let a = 1;
-                    Ok(Some(class.execute_call(self, args)?))
-                }
+                Expr::Class(class) => Ok(Some(class.execute_call(self, args)?)),
                 _ => Err(Error::new(
                     "Can only call functions and classes.".to_string(),
                 )),

@@ -88,6 +88,8 @@ impl TestReader {
                         comments.push(Ok(Expr::Literal(Literal::Bool(true))));
                     } else if expected.as_str() == "false" {
                         comments.push(Ok(Expr::Literal(Literal::Bool(false))));
+                    } else if expected.as_str() == "nil" {
+                        comments.push(Ok(Expr::Literal(Literal::Nil)));
                     } else {
                         comments.push(Ok(Expr::Literal(Literal::Str(expected))));
                     }

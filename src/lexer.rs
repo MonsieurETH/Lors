@@ -1,3 +1,5 @@
+use crate::ast::Error;
+
 pub struct Lexer {
     source: String,
     pub tokens: Vec<Token>,
@@ -84,10 +86,10 @@ impl Lexer {
         }
     }
 
-    pub fn scan_tokens(&mut self) {
+    pub fn scan_tokens(&mut self) -> Result<(), Error> {
         while !self.is_at_end() {
             self.start = self.current;
-            self.scan_token();
+            self.scan_token()?;
         }
 
         self.tokens.push(Token {
@@ -97,9 +99,11 @@ impl Lexer {
             line: self.line,
             pos: self.current,
         });
+
+        Ok(())
     }
 
-    fn scan_token(&mut self) {
+    fn scan_token(&mut self) -> Result<(), Error> {
         let c = self.advance();
 
         match c {
@@ -151,15 +155,18 @@ impl Lexer {
                     self.add_token(TokenType::Slash, None)
                 }
             }
-            '"' => self.string(),
+            '"' => self.string()?,
             '0'..='9' => self.number(),
             'a'..='z' | 'A'..='Z' => self.identifier(),
             ' ' | '\r' | '\t' => {}
             '\n' => self.line += 1,
             _ => {
-                eprintln!("Unexpected character at line {}", self.line);
+                return Err(Error {
+                    msg: format!("[line {}] Error: Unexpected character.", self.line),
+                });
             }
         }
+        Ok(())
     }
 
     fn identifier(&mut self) {
@@ -191,7 +198,7 @@ impl Lexer {
         self.add_token(token_type, None);
     }
 
-    fn string(&mut self) {
+    fn string(&mut self) -> Result<(), Error> {
         while self.peek() != '"' && !self.is_at_end() {
             if self.peek() == '\n' {
                 self.line += 1;
@@ -200,8 +207,9 @@ impl Lexer {
         }
 
         if self.is_at_end() {
-            eprintln!("Unterminated string at line {}", self.line);
-            return;
+            return Err(Error {
+                msg: format!("[line {}] Unterminated string.", self.line),
+            });
         }
 
         // The closing quote.
@@ -210,6 +218,7 @@ impl Lexer {
         // Trim the surrounding quotes.
         let value = &self.source[self.start + 1..self.current - 1];
         self.add_token(TokenType::String, Some(TokenLiteral::Str(value.to_owned())));
+        Ok(())
     }
 
     fn number(&mut self) {

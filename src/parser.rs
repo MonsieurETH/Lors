@@ -563,8 +563,13 @@ impl Parser {
         if self.check(&token_type) {
             self.advance()
         } else {
+            let token = self.peek();
+            let name = match token.token_type {
+                TokenType::Eof => "end".to_string(),
+                _ => "'".to_owned() + &token.lexeme + "'",
+            };
             Err(Error {
-                msg: format!("{} in {:?}", message, self.peek()),
+                msg: format!("[line {}] Error at {}: {}", token.line, name, message),
             })
         }
     }

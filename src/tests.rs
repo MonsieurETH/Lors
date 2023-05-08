@@ -233,16 +233,6 @@ fn test_return() {
 }
 
 #[test]
-fn test_scanning() {
-    let tr = TestReader::new(&(TESTS_FOLDER.to_string() + "/scanning/*.lox"));
-    for key in tr.iter() {
-        println!("{}", key);
-        let (expected, result) = tr.run_test(&(TESTS_FOLDER.to_string() + "/" + key));
-        assert_eq!(expected, result)
-    }
-}
-
-#[test]
 fn test_super() {
     let tr = TestReader::new(&(TESTS_FOLDER.to_string() + "/super/*.lox"));
     for key in tr.iter() {

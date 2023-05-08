@@ -206,7 +206,7 @@ impl Function {
         args: Vec<Expr>,
     ) -> Result<Expr, Error> {
         let Function {
-            name,
+            name: _,
             parameters,
             body,
             context,

@@ -12,7 +12,7 @@ use crate::{
 
 use super::interpreter::Interpreter;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct Scope {
     symbol_table: HashMap<String, bool>,
     //interpreter: Interpreter,
@@ -82,10 +82,12 @@ impl<'a> Resolver<'a> {
         if self.scopes.len() == 0 {
             return Ok(None);
         }
+        let at_global = self.scopes.len() == 1;
         let scope = self.scopes.last_mut().unwrap();
-        if scope.exists(name) {
+
+        if !at_global && scope.exists(name) {
             return Err(Error::new(format!(
-                "{:?} Already a variable with this name in this scope.",
+                "Error at '{}': Already a variable with this name in this scope.",
                 name
             )));
         }
@@ -107,7 +109,8 @@ impl<'a> Resolver<'a> {
                 return Ok(symbol);
             }
         }
-        Err(Error::new(format!("Undefined variable '{:}'.", name)))
+        Ok(None)
+        //Err(Error::new(format!("Undefined variable '{:}'.", name)))
     }
 
     pub fn resolve_local(&mut self, expr: &Expr, name: &str) {
@@ -205,9 +208,9 @@ impl<'a> IVisitorStmt<Result<Option<Stmt>, Error>> for Resolver<'a> {
                 branch_true,
                 branch_false,
             }) => {
-                condition.accept(self).unwrap();
-                branch_true.accept(self).unwrap();
-                branch_false.accept(self).unwrap();
+                condition.accept(self)?;
+                branch_true.accept(self)?;
+                branch_false.accept(self)?;
                 Ok(None)
             }
             _ => Err(Error::new("Invalid statement".to_string())),
@@ -244,8 +247,8 @@ impl<'a> IVisitorStmt<Result<Option<Stmt>, Error>> for Resolver<'a> {
             Stmt::Return(Return { keyword, value }) => {
                 if self.current_function == FunctionType::None {
                     return Err(Error::new(format!(
-                        "{:?} Can't return from top-level code.",
-                        keyword
+                        "Error at '{}': Can't return from top-level code.",
+                        keyword.lexeme
                     )));
                 }
                 if *value != Expr::Literal(Literal::Nil) {
@@ -323,9 +326,9 @@ impl<'a> IVisitorExpr<Result<Option<Expr>, Error>> for Resolver<'a> {
     fn visit_var(&mut self, expr: &Expr) -> Result<Option<Expr>, Error> {
         if let Expr::Var(Var::Token(token)) = expr {
             if !(self.scopes.len() == 0) && (self.get(&token.lexeme)? == None) {
-                Err(Error::new(format!(
+                return Err(Error::new(format!(
                     "Can't read local variable in its own initializer."
-                )))
+                )));
             } else {
                 self.resolve_local(&mut expr.clone(), &token.lexeme);
                 Ok(None)
@@ -441,7 +444,10 @@ impl<'a> IVisitorExpr<Result<Option<Expr>, Error>> for Resolver<'a> {
     fn visit_this(&mut self, expr: &Expr) -> Result<Option<Expr>, Error> {
         if let Expr::This(This { keyword }) = expr {
             if self.current_class == ClassType::None {
-                return Err(Error::new(format!("Can't use 'this' outside of a class.")));
+                return Err(Error::new(format!(
+                    "Error at '{}': Can't use 'this' outside of a class.",
+                    keyword.lexeme
+                )));
             }
             self.resolve_local(expr, keyword.lexeme.as_str());
             Ok(None)
@@ -453,7 +459,10 @@ impl<'a> IVisitorExpr<Result<Option<Expr>, Error>> for Resolver<'a> {
     fn visit_super(&mut self, expr: &Expr) -> Result<Option<Expr>, Error> {
         if let Expr::Super(Super { keyword, method: _ }) = expr {
             if self.current_class == ClassType::None {
-                return Err(Error::new(format!("Can't use 'super' outside of a class.")));
+                return Err(Error::new(format!(
+                    "Error at '{}': Can't use 'super' outside of a class.",
+                    keyword.lexeme
+                )));
             } else if self.current_class != ClassType::SubClass {
                 return Err(Error::new(format!(
                     "Can't use 'super' in a class with no superclass."

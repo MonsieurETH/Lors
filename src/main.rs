@@ -29,7 +29,14 @@ fn run_test(path: &String) {
     let source = fs::read_to_string(path).expect("Error reading file");
 
     let mut lexer = Lexer::new(&source);
-    lexer.scan_tokens();
+    let res = lexer.scan_tokens();
+    match res {
+        Ok(_) => {}
+        Err(e) => {
+            println!("{:?}", e.msg);
+            return;
+        }
+    }
 
     let mut parser: Parser = Parser::new(lexer.tokens);
     let ast = parser.parse();
@@ -79,9 +86,15 @@ where
 }
 
 fn run(source: &String) -> bool {
-    let mut lexer = Lexer::new(source);
-    lexer.scan_tokens();
-
+    let mut lexer = Lexer::new(&source);
+    let res = lexer.scan_tokens();
+    match res {
+        Ok(_) => {}
+        Err(e) => {
+            println!("{:?}", e.msg);
+            return false;
+        }
+    }
     let mut parser: Parser = Parser::new(lexer.tokens);
     let ast = parser.parse();
 
