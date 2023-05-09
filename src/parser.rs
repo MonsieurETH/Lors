@@ -83,7 +83,10 @@ impl Parser {
             loop {
                 if parameters.len() >= 255 {
                     return Err(Error {
-                        msg: format!("Cannot have more than 255 arguments."),
+                        msg: format!(
+                            "Error at '{}': Can't have more than 255 parameters.",
+                            self.peek().lexeme
+                        ),
                     });
                 }
                 let token = self.consume(TokenType::Identifier, "Expect parameter name.")?;
@@ -455,7 +458,10 @@ impl Parser {
             loop {
                 if arguments.len() >= 255 {
                     Err(Error {
-                        msg: format!("Cannot have more than 255 arguments."),
+                        msg: format!(
+                            "Error at '{}': Can't have more than 255 arguments.",
+                            self.peek().lexeme
+                        ),
                     })?;
                 }
                 arguments.push(self.expression()?);

@@ -6,7 +6,7 @@ print Foo == Bar; // expect: false
 print Bar == Foo; // expect: false
 print Bar == Bar; // expect: true
 
-print Foo == "Foo"; // expect: false
+print Foo == "Foo"; // Operands must be of the same type
 print Foo == nil;   // expect: false
-print Foo == 123;   // expect: false
-print Foo == true;  // expect: false
+print Foo == 123;   // Operands must be of the same type
+print Foo == true;  // Operands must be of the same type

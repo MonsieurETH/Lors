@@ -109,8 +109,8 @@ impl<'a> Resolver<'a> {
                 return Ok(symbol);
             }
         }
-        Ok(None)
-        //Err(Error::new(format!("Undefined variable '{:}'.", name)))
+        //Ok(None)
+        Err(Error::new(format!("Undefined variable '{:}'.", name)))
     }
 
     pub fn resolve_local(&mut self, expr: &Expr, name: &str) {

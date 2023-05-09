@@ -1,9 +1,12 @@
-class Base {}
+class Foo {}
+class Bar {}
 
-class Derived < Base {
-  foo() {
-    super.doesNotExist(1); // expect runtime error: Undefined property 'doesNotExist'.
-  }
-}
+print Foo == Foo; // expect: true
+print Foo == Bar; // expect: false
+print Bar == Foo; // expect: false
+print Bar == Bar; // expect: true
 
-Derived().foo();
+print Foo == "Foo"; // Operands must be of the same type
+print Foo == nil;   // expect: false
+print Foo == 123;   // Operands must be of the same type
+print Foo == true;  // Operands must be of the same type

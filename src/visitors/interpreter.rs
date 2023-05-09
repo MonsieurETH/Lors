@@ -193,7 +193,6 @@ impl Interpreter {
     }
 
     fn lookup_symbol(&self, name: &str, expr: &Expr) -> Result<Option<Expr>, Error> {
-        //let hash = Self::calculate_hash(expr);
         let distance = self.locals.get(&expr);
 
         match distance {
@@ -202,22 +201,13 @@ impl Interpreter {
         }
     }
 
-    /*fn calculate_hash<T>(obj: T) -> u64
-    where
-        T: Hash,
-    {
-        let mut hasher = DefaultHasher::new();
-        obj.hash(&mut hasher);
-        hasher.finish()
-    }*/
-
     pub fn resolve(&mut self, expr: &Expr, depth: usize) {
         self.locals.insert(expr.clone(), depth);
     }
 
     pub fn execute_block(
         &mut self,
-        stmts: &Vec<Stmt>,
+        stmts: &[Stmt],
         env: Option<Rc<RefCell<Environment>>>,
     ) -> Result<Option<Stmt>, Error> {
         let actual_env = self.get_actual_env();
@@ -266,6 +256,13 @@ impl IVisitorStmt<Result<Option<Stmt>, Error>> for Interpreter {
                     Some(Expr::Instance(Instance { class, fields: _ })) => {
                         println!("{:?}", Expr::Literal(Literal::Str(class.name)))
                     }
+                    Some(Expr::Function(Function {
+                        name,
+                        parameters: _,
+                        body: _,
+                        context: _,
+                        is_initializer: _,
+                    })) => println!("{:?}", Expr::Literal(Literal::Str(name))),
                     Some(pv) => println!("{:?}", pv),
                     None => println!("None"),
                 }

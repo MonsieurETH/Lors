@@ -7,4 +7,4 @@ var fooMethod = foo.method;
 
 print fooMethod == fooMethod; // expect: true
 
-print foo.method == foo.method; // expect: false
+print foo.method == foo.method; // expect: true

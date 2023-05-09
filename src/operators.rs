@@ -1,5 +1,5 @@
 use crate::{
-    ast::{Error, Expr, Literal},
+    ast::{Class, Error, Expr, Function, Get, Literal},
     lexer::{Token, TokenType},
 };
 
@@ -53,7 +53,7 @@ impl Operator {
     fn minus(self, expr: Expr) -> Result<Option<Expr>, Error> {
         match expr {
             Expr::Literal(Literal::Number(n)) => Ok(Some(Expr::Literal(Literal::Number(-n)))),
-            _ => Err(Error::new("Operand must be a number".to_string())),
+            _ => Err(Error::new("Operand must be a number.".to_string())),
         }
     }
 
@@ -139,6 +139,23 @@ impl Operator {
 
     fn equal_equal(self, left: Expr, right: Expr) -> Result<Option<Expr>, Error> {
         match (left, right) {
+            (
+                Expr::Function(Function {
+                    name: name1,
+                    parameters: parameters1,
+                    ..
+                }),
+                Expr::Function(Function {
+                    name: name2,
+                    parameters: parameters2,
+                    ..
+                }),
+            ) => Ok(Some(Expr::Literal(Literal::Bool(
+                name1 == name2 && parameters1 == parameters2,
+            )))),
+            (Expr::Class(Class { name: name1, .. }), Expr::Class(Class { name: name2, .. })) => {
+                Ok(Some(Expr::Literal(Literal::Bool(name1 == name2))))
+            }
             (Expr::Literal(Literal::Bool(l)), Expr::Literal(Literal::Bool(r))) => {
                 Ok(Some(Expr::Literal(Literal::Bool(l == r))))
             }
@@ -148,6 +165,12 @@ impl Operator {
             (Expr::Literal(Literal::Str(l)), Expr::Literal(Literal::Str(r))) => {
                 Ok(Some(Expr::Literal(Literal::Bool(l == r))))
             }
+            (Expr::Literal(Literal::Nil), Expr::Literal(Literal::Nil)) => {
+                Ok(Some(Expr::Literal(Literal::Bool(true))))
+            }
+            (Expr::Literal(Literal::Nil), _) => Ok(Some(Expr::Literal(Literal::Bool(false)))),
+            (_, Expr::Literal(Literal::Nil)) => Ok(Some(Expr::Literal(Literal::Bool(false)))),
+
             _ => Err(Error::new("Operands must be of the same type".to_string())),
         }
     }

@@ -1,5 +1,4 @@
 class Foo {
-  // 256 parameters.
   method(
     a1,
     a2,
