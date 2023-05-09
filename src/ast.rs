@@ -229,9 +229,8 @@ impl Function {
             env.define(&token.lexeme, arg)
         }
         //TODO globals here
-        let res: Option<Stmt> = interpreter
-            .execute_block(&body, Some(Rc::new(RefCell::new(env))))
-            .unwrap();
+        let res: Option<Stmt> =
+            interpreter.execute_block(&body, Some(Rc::new(RefCell::new(env))))?;
 
         if is_initializer {
             return Ok(context.as_ref().borrow().retrieve("this").unwrap());

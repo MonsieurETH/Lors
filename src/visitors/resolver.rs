@@ -465,7 +465,8 @@ impl<'a> IVisitorExpr<Result<Option<Expr>, Error>> for Resolver<'a> {
                 )));
             } else if self.current_class != ClassType::SubClass {
                 return Err(Error::new(format!(
-                    "Can't use 'super' in a class with no superclass."
+                    "Error at '{}': Can't use 'super' in a class with no superclass.",
+                    keyword.lexeme
                 )));
             }
             self.resolve_local(expr, keyword.lexeme.as_str());

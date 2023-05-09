@@ -225,7 +225,7 @@ impl Interpreter {
 
         let mut result = None;
         for stmt in stmts {
-            let accepted_stmt = stmt.accept(self).unwrap();
+            let accepted_stmt = stmt.accept(self)?;
             match accepted_stmt {
                 Some(s) => {
                     result = Some(s);
