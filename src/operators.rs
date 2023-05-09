@@ -172,7 +172,7 @@ impl Operator {
             (Expr::Literal(Literal::Number(l)), Expr::Literal(Literal::Number(r))) => {
                 Ok(Some(Expr::Literal(Literal::Bool(l > r))))
             }
-            _ => Err(Error::new("Operands must be numbers".to_string())),
+            _ => Err(Error::new("Operands must be numbers.".to_string())),
         }
     }
 
@@ -181,7 +181,7 @@ impl Operator {
             (Expr::Literal(Literal::Number(l)), Expr::Literal(Literal::Number(r))) => {
                 Ok(Some(Expr::Literal(Literal::Bool(l >= r))))
             }
-            _ => Err(Error::new("Operands must be numbers".to_string())),
+            _ => Err(Error::new("Operands must be numbers.".to_string())),
         }
     }
 
@@ -190,7 +190,7 @@ impl Operator {
             (Expr::Literal(Literal::Number(l)), Expr::Literal(Literal::Number(r))) => {
                 Ok(Some(Expr::Literal(Literal::Bool(l < r))))
             }
-            _ => Err(Error::new("Operands must be numbers".to_string())),
+            _ => Err(Error::new("Operands must be numbers.".to_string())),
         }
     }
 
@@ -199,7 +199,7 @@ impl Operator {
             (Expr::Literal(Literal::Number(l)), Expr::Literal(Literal::Number(r))) => {
                 Ok(Some(Expr::Literal(Literal::Bool(l <= r))))
             }
-            _ => Err(Error::new("Operands must be numbers".to_string())),
+            _ => Err(Error::new("Operands must be numbers.".to_string())),
         }
     }
 }
