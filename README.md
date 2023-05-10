@@ -1,12 +1,12 @@
 # Lors Programming Language
 
-Lors is a toy programming language developed for educational purposes and as a Rust practice project. It includes basic functionality such as variables, functions, classes, and control flow, and is heavily inspired by the language implemented in the popular book ["Crafting Interpreters" by Bob Nystrom](http://craftinginterpreters.com).
+Lors is a toy programming language developed for educational purposes and as a Rust practice project. It includes basic functionality such as variables, functions, classes, inheritance, control flow, etc., and is heavily inspired by the popular book ["Crafting Interpreters" by Bob Nystrom](http://craftinginterpreters.com).
 
 Please note that Lors is not intended for production use and should be treated as a learning tool or a hobby project only.
 
-## Description
+## Project Status
 
-Lors is a simple and minimalistic programming language designed for educational purposes and as a Rust practice project. It supports basic programming constructs such as variables, functions, classes, and control flow statements.
+As for the interpreter, most of the tests proposed in the book have been successfully implemented. There are a few minor issues with some tests not passing, but these should be easily resolved. The next step is to finalize the corrections for these tests and proceed with the second part of the project, which is the compiler. However, having gained valuable experience in coding a medium-sized project in Rust, I feel that this is a good moment to step back from the project and work on something different before continuing.
 
 ## Contributing
 

@@ -197,7 +197,13 @@ impl Interpreter {
 
         match distance {
             Some(distance) => self.get_symbol_at(*distance as isize, name),
-            None => Ok(self.globals.get(name).cloned()),
+            None => {
+                if self.globals.contains_key(name) {
+                    return Ok(self.globals.get(name).cloned());
+                } else {
+                    return Err(Error::new(format!("Undefined variable '{}'.", name)));
+                }
+            }
         }
     }
 

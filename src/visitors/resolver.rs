@@ -113,6 +113,16 @@ impl<'a> Resolver<'a> {
         Err(Error::new(format!("Undefined variable '{:}'.", name)))
     }
 
+    pub fn contains_key(&self, name: &str) -> bool {
+        for env in self.scopes.iter().rev() {
+            let symbol = env.exists(name);
+            if symbol {
+                return true;
+            }
+        }
+        false
+    }
+
     pub fn resolve_local(&mut self, expr: &Expr, name: &str) {
         for i in (0..self.scopes.len()).rev() {
             if let Some(_) = self.scopes[i].symbol_table.get(name) {
@@ -325,7 +335,10 @@ impl<'a> IVisitorStmt<Result<Option<Stmt>, Error>> for Resolver<'a> {
 impl<'a> IVisitorExpr<Result<Option<Expr>, Error>> for Resolver<'a> {
     fn visit_var(&mut self, expr: &Expr) -> Result<Option<Expr>, Error> {
         if let Expr::Var(Var::Token(token)) = expr {
-            if !(self.scopes.len() == 0) && (self.get(&token.lexeme)? == None) {
+            if !(self.scopes.len() == 0)
+                && self.contains_key(&token.lexeme)
+                && (self.get(&token.lexeme)? == None)
+            {
                 return Err(Error::new(format!(
                     "Can't read local variable in its own initializer."
                 )));

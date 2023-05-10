@@ -1,12 +1,4 @@
-class Foo {}
-class Bar {}
-
-print Foo == Foo; // expect: true
-print Foo == Bar; // expect: false
-print Bar == Foo; // expect: false
-print Bar == Bar; // expect: true
-
-print Foo == "Foo"; // Operands must be of the same type
-print Foo == nil;   // expect: false
-print Foo == 123;   // Operands must be of the same type
-print Foo == true;  // Operands must be of the same type
+var a = "outer";
+{
+  var a = a; // Error at 'a': Can't read local variable in its own initializer.
+}
