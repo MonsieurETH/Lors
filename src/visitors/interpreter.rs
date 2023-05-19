@@ -361,7 +361,7 @@ impl IVisitorStmt<Result<Option<Stmt>, Error>> for Interpreter {
         if let Stmt::Return(Return { keyword, value }) = stmt {
             let val = match value {
                 Expr::Literal(Literal::Nil) => Expr::Literal(Literal::Nil),
-                _ => value.accept(self).unwrap().unwrap(),
+                _ => value.accept(self)?.unwrap(),
             };
 
             Ok(Some(Stmt::Return(Return {
@@ -435,7 +435,7 @@ impl IVisitorExpr<Result<Option<Expr>, Error>> for Interpreter {
 
     fn visit_unary(&mut self, expr: &Expr) -> Result<Option<Expr>, Error> {
         if let Expr::Unary(Unary { operator, right }) = expr {
-            let accepted_right = right.accept(self).unwrap().unwrap();
+            let accepted_right = right.accept(self)?.unwrap();
             operator.clone().unary(accepted_right)
         } else {
             Err(Error::new("Invalid expression".to_string()))
@@ -449,8 +449,8 @@ impl IVisitorExpr<Result<Option<Expr>, Error>> for Interpreter {
             right,
         }) = expr
         {
-            let accepted_left = left.accept(self).unwrap().unwrap();
-            let accepted_right = right.accept(self).unwrap().unwrap();
+            let accepted_left = left.accept(self)?.unwrap();
+            let accepted_right = right.accept(self)?.unwrap();
             operator.clone().binary(accepted_left, accepted_right)
         } else {
             Err(Error::new("Invalid expression".to_string()))
@@ -479,7 +479,7 @@ impl IVisitorExpr<Result<Option<Expr>, Error>> for Interpreter {
             let var_name: String = token.lexeme.to_owned();
 
             if self.check_symbol(&var_name) {
-                let accepted_expr = value.accept(self).unwrap().unwrap();
+                let accepted_expr = value.accept(self)?.unwrap();
                 //let hash = Self::calculate_hash(expr);
                 let distance = self.locals.get(expr);
 
@@ -604,7 +604,7 @@ impl IVisitorExpr<Result<Option<Expr>, Error>> for Interpreter {
             let accepted_object = object.accept(self)?.unwrap();
             match accepted_object {
                 Expr::Instance(mut instance) => {
-                    let value = value.accept(self).unwrap().unwrap();
+                    let value = value.accept(self)?.unwrap();
                     instance.set_field(&name.lexeme, value.clone());
 
                     let distance = self.locals.get(object);
@@ -650,8 +650,8 @@ impl IVisitorExpr<Result<Option<Expr>, Error>> for Interpreter {
             let distance = self.locals.get(&expr).unwrap();
 
             let d = *distance;
-            let superclass = self.get_symbol_at(d as isize, "super").unwrap().unwrap();
-            let object = self.get_symbol_at(d as isize - 1, "this").unwrap().unwrap();
+            let superclass = self.get_symbol_at(d as isize, "super")?.unwrap();
+            let object = self.get_symbol_at(d as isize - 1, "this")?.unwrap();
 
             let superclass = extract_enum_value!(superclass, Expr::Class(c) => c);
             let object = extract_enum_value!(object, Expr::Instance(i) => i);
