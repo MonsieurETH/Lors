@@ -162,7 +162,7 @@ impl Interpreter {
             }
         }
 
-        Ok(None)
+        Err(Error::new(format!("Undefined variable {}", name)))
     }
 
     pub fn assign_symbol_at(
@@ -601,7 +601,7 @@ impl IVisitorExpr<Result<Option<Expr>, Error>> for Interpreter {
             value,
         }) = expr
         {
-            let accepted_object = object.accept(self).unwrap().unwrap();
+            let accepted_object = object.accept(self)?.unwrap();
             match accepted_object {
                 Expr::Instance(mut instance) => {
                     let value = value.accept(self).unwrap().unwrap();
