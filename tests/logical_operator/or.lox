@@ -1,4 +1,4 @@
-print 1 or true; // expect: 1
+print 1 or true; // expect: true
 print false or 1; // expect: 1
 print false or false or true; // expect: true
 

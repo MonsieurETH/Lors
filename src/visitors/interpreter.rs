@@ -511,7 +511,7 @@ impl IVisitorExpr<Result<Option<Expr>, Error>> for Interpreter {
             let left_accepted = left.accept(self).unwrap();
             let accepted = match operator {
                 Operator::Or => {
-                    if let Some(Expr::Literal(Literal::Bool(false))) = left_accepted {
+                    if let Some(Expr::Literal(Literal::Bool(true))) = left_accepted {
                         left_accepted
                     } else {
                         right.accept(self).unwrap()
@@ -520,6 +520,8 @@ impl IVisitorExpr<Result<Option<Expr>, Error>> for Interpreter {
                 _ => {
                     if let Some(Expr::Literal(Literal::Bool(false))) = left_accepted {
                         left_accepted
+                    } else if Some(Expr::Literal(Literal::Nil)) == left_accepted {
+                        Some(Expr::Literal(Literal::Nil))
                     } else {
                         right.accept(self).unwrap()
                     }
