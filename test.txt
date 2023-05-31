@@ -1,16 +1,4 @@
-class Base {
-  init(a) {
-    this.a = a;
-  }
+var a = "outer";
+{
+  var a = a; // Error at 'a': Can't read local variable in its own initializer.
 }
-
-class Derived < Base {
-  init(a, b) {
-    super.init(a);
-    this.b = b;
-  }
-}
-
-var derived = Derived("a", "b");
-print derived.a; // expect: a
-print derived.b; // expect: b

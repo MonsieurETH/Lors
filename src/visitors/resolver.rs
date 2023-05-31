@@ -190,7 +190,7 @@ impl<'a> IVisitorStmt<Result<Option<Stmt>, Error>> for Resolver<'a> {
         match stmt {
             Stmt::VarDecl(VarDecl { name, expr }) => {
                 self.declare(name.as_str())?;
-                expr.accept(self).unwrap();
+                expr.accept(self)?;
                 self.define(name.as_str());
                 Ok(None)
             }
@@ -335,9 +335,9 @@ impl<'a> IVisitorStmt<Result<Option<Stmt>, Error>> for Resolver<'a> {
 impl<'a> IVisitorExpr<Result<Option<Expr>, Error>> for Resolver<'a> {
     fn visit_var(&mut self, expr: &Expr) -> Result<Option<Expr>, Error> {
         if let Expr::Var(Var::Token(token)) = expr {
-            if !(self.scopes.len() == 0)
+            if self.scopes.len() != 0
                 && self.contains_key(&token.lexeme)
-                && (self.get(&token.lexeme)? == None)
+                && (self.get(&token.lexeme)?.unwrap() == false)
             {
                 return Err(Error::new(format!(
                     "Can't read local variable in its own initializer."
