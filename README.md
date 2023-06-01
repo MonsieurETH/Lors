@@ -6,7 +6,7 @@ Please note that Lors is not intended for production use and should be treated a
 
 ## Project Status
 
-As for the interpreter, most of the tests proposed in the book have been successfully implemented. There are a few minor issues with some tests not passing, but these should be easily resolved. The next step is to finalize the corrections for these tests and proceed with the second part of the project, which is the compiler. However, having gained valuable experience in coding a medium-sized project in Rust, I feel that this is a good moment to step back from the project and work on something different before continuing.
+As for the interpreter, most of the tests proposed in the book have been successfully passed. There are some minor problems with two tests that do not pass (related to fields and inheritance), but they should be easily resolved. The next step is to proceed with the second part of the project, which is the bytecode compiler.
 
 ## Contributing
 
