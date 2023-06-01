@@ -1,5 +1,5 @@
 use core::panic;
-use std::collections::HashMap;
+use std::{collections::HashMap, env};
 
 use crate::{
     ast::{
@@ -111,6 +111,22 @@ impl<'a> Resolver<'a> {
         }
         //Ok(None)
         Err(Error::new(format!("Undefined variable '{:}'.", name)))
+    }
+
+    pub fn get_non_global(&self, name: &str) -> Result<Option<bool>, Error> {
+        let mut envs = self.scopes.iter().rev().peekable();
+        while let Some(env) = envs.next() {
+            if envs.peek().is_some() {
+                let symbol = env.retrieve(name);
+                if symbol.is_some() {
+                    return Ok(symbol);
+                }
+            } else {
+                break;
+            }
+        }
+        Ok(None)
+
     }
 
     pub fn contains_key(&self, name: &str) -> bool {
@@ -337,10 +353,10 @@ impl<'a> IVisitorExpr<Result<Option<Expr>, Error>> for Resolver<'a> {
         if let Expr::Var(Var::Token(token)) = expr {
             if self.scopes.len() != 0
                 && self.contains_key(&token.lexeme)
-                && (self.get(&token.lexeme)?.unwrap() == false)
+                && (self.get_non_global(&token.lexeme)?.ok_or(true) == Ok(false))
             {
                 return Err(Error::new(format!(
-                    "Can't read local variable in its own initializer."
+                    "Error at '{}': Can't read local variable in its own initializer.", &token.lexeme
                 )));
             } else {
                 self.resolve_local(&mut expr.clone(), &token.lexeme);

@@ -59,7 +59,6 @@ impl Environment {
 pub struct Interpreter {
     environments: Option<Rc<RefCell<Environment>>>,
     locals: BTreeMap<Expr, usize>,
-    globals: BTreeMap<String, Expr>,
     counter: usize,
 }
 
@@ -88,9 +87,15 @@ impl<'a> Iterator for EnvironmentIterator<'a> {
 
     fn last(self) -> Option<Self::Item> {
         let mut env = self.interpreter.get_actual_env();
+        if env.clone()?.borrow().enclosing.is_none() {
+            return env;
+        }
 
-        for _ in 0..self.interpreter.counter {
+        for _ in 0..self.interpreter.counter{
             env = env?.borrow().enclosing.as_ref().map(|e| Rc::clone(e));
+            if env.clone()?.borrow().enclosing.is_none() {
+                break;
+            }
         }
 
         env
@@ -102,7 +107,6 @@ impl Interpreter {
         Interpreter {
             environments: Some(Rc::new(RefCell::new(Environment::new()))),
             locals: BTreeMap::new(),
-            globals: BTreeMap::new(),
             counter: 1,
         }
     }
@@ -701,27 +705,22 @@ mod tests {
     #[test]
     fn environment_lifecycle() {
         let mut interpreter = Interpreter::new();
-        assert_eq!(interpreter.globals.len(), 0);
         assert_eq!(interpreter.locals.len(), 0);
         assert_eq!(interpreter.counter, 1);
 
         interpreter.new_environment(None);
-        assert_eq!(interpreter.globals.len(), 0);
         assert_eq!(interpreter.locals.len(), 0);
         assert_eq!(interpreter.counter, 2);
 
         interpreter.new_environment(None);
-        assert_eq!(interpreter.globals.len(), 0);
         assert_eq!(interpreter.locals.len(), 0);
         assert_eq!(interpreter.counter, 3);
 
         interpreter.drop_environment();
-        assert_eq!(interpreter.globals.len(), 0);
         assert_eq!(interpreter.locals.len(), 0);
         assert_eq!(interpreter.counter, 2);
 
         interpreter.drop_environment();
-        assert_eq!(interpreter.globals.len(), 0);
         assert_eq!(interpreter.locals.len(), 0);
         assert_eq!(interpreter.counter, 1);
     }
@@ -730,7 +729,6 @@ mod tests {
     fn environment_nothing_to_drop() {
         let mut interpreter = Interpreter::new();
         interpreter.drop_environment();
-        assert_eq!(interpreter.globals.len(), 0);
         assert_eq!(interpreter.locals.len(), 0);
         //assert_eq!(interpreter.counter, 1);
         //Need to decide behavior here
@@ -738,19 +736,16 @@ mod tests {
     #[test]
     fn environment_manipulation() {
         let mut interpreter = Interpreter::new();
-        assert_eq!(interpreter.globals.len(), 0);
         assert_eq!(interpreter.locals.len(), 0);
         assert_eq!(interpreter.counter, 1);
         interpreter.define_symbol("a", Expr::Literal(Literal::Number(OrderedFloat(1.0))));
 
         interpreter.new_environment(None);
-        assert_eq!(interpreter.globals.len(), 0);
         assert_eq!(interpreter.locals.len(), 0);
         assert_eq!(interpreter.counter, 2);
         interpreter.define_symbol("b", Expr::Literal(Literal::Number(OrderedFloat(2.0))));
 
         interpreter.new_environment(None);
-        assert_eq!(interpreter.globals.len(), 0);
         assert_eq!(interpreter.locals.len(), 0);
         assert_eq!(interpreter.counter, 3);
         interpreter.define_symbol("c", Expr::Literal(Literal::Number(OrderedFloat(3.0))));
@@ -777,7 +772,6 @@ mod tests {
         assert_eq!(interpreter.get_symbol_at(1, "a").unwrap(), None);
 
         interpreter.drop_environment();
-        assert_eq!(interpreter.globals.len(), 0);
         assert_eq!(interpreter.locals.len(), 0);
         assert_eq!(interpreter.counter, 2);
 
