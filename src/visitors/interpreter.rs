@@ -48,6 +48,11 @@ impl Environment {
     pub fn retrieve(&self, name: &str) -> Option<Expr> {
         self.symbol_table.get(name).cloned()
     }
+
+    pub fn contains_key(&self, name: &str) -> bool {
+        self.symbol_table.contains_key(name)
+    }
+
 }
 
 #[derive(Debug, PartialEq)]
@@ -77,6 +82,16 @@ impl<'a> Iterator for EnvironmentIterator<'a> {
             env = env?.borrow().enclosing.as_ref().map(|e| Rc::clone(e));
         }
         self.pos += 1;
+
+        env
+    }
+
+    fn last(self) -> Option<Self::Item> {
+        let mut env = self.interpreter.get_actual_env();
+
+        for _ in 0..self.interpreter.counter {
+            env = env?.borrow().enclosing.as_ref().map(|e| Rc::clone(e));
+        }
 
         env
     }
@@ -144,6 +159,10 @@ impl Interpreter {
             .define(name, value);
     }
 
+    pub fn globals(&mut self) -> Rc<RefCell<Environment>> {
+        self.iterator().last().unwrap()
+    }
+
     pub fn get_symbol_at(&self, mut pos: isize, name: &str) -> Result<Option<Expr>, Error> {
         if pos < 0 {
             return Err(Error::new("Invalid position".to_string()));
@@ -192,14 +211,14 @@ impl Interpreter {
         false
     }
 
-    fn lookup_symbol(&self, name: &str, expr: &Expr) -> Result<Option<Expr>, Error> {
+    fn lookup_symbol(&mut self, name: &str, expr: &Expr) -> Result<Option<Expr>, Error> {
         let distance = self.locals.get(&expr);
 
         match distance {
             Some(distance) => self.get_symbol_at(*distance as isize, name),
             None => {
-                if self.globals.contains_key(name) {
-                    return Ok(self.globals.get(name).cloned());
+                if self.globals().as_ref().borrow().contains_key(name) {
+                    return Ok(self.globals().as_ref().borrow().retrieve(name));
                 } else {
                     return Err(Error::new(format!("Undefined variable '{}'.", name)));
                 }
@@ -480,7 +499,6 @@ impl IVisitorExpr<Result<Option<Expr>, Error>> for Interpreter {
 
             if self.check_symbol(&var_name) {
                 let accepted_expr = value.accept(self)?.unwrap();
-                //let hash = Self::calculate_hash(expr);
                 let distance = self.locals.get(expr);
 
                 match distance {
@@ -488,7 +506,7 @@ impl IVisitorExpr<Result<Option<Expr>, Error>> for Interpreter {
                         self.assign_symbol_at(*distance, var_name.as_str(), accepted_expr.clone())?;
                     }
                     None => {
-                        self.globals.insert(var_name, accepted_expr.clone());
+                        self.globals().as_ref().borrow_mut().define(&var_name, accepted_expr.clone());
                     }
                 }
 
@@ -626,8 +644,8 @@ impl IVisitorExpr<Result<Option<Expr>, Error>> for Interpreter {
                             self.assign_symbol_at(*distance, &var_name, Expr::Instance(instance))?;
                         }
                         None => {
-                            self.globals
-                                .insert(var_name.to_string(), Expr::Instance(instance));
+                            self.globals().as_ref().borrow_mut()
+                                .define(var_name, Expr::Instance(instance));
                         }
                     }
                     Ok(Some(value))

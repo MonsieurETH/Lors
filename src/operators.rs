@@ -1,5 +1,5 @@
 use crate::{
-    ast::{Class, Error, Expr, Function, Get, Literal},
+    ast::{Class, Error, Expr, Function, Literal},
     lexer::{Token, TokenType},
 };
 
