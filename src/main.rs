@@ -4,6 +4,7 @@ mod operators;
 mod parser;
 pub mod tools;
 mod visitors;
+mod chunk;
 
 use ast::{Error, Expr, IVisitorExpr, IVisitorStmt, Stmt};
 use lexer::Lexer;
