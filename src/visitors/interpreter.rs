@@ -403,6 +403,7 @@ impl IVisitorStmt<Result<Option<Stmt>, Error>> for Interpreter {
             superclass,
         }) = stmt
         {
+            let mut env = self.get_actual_env();
             let asc = if superclass.is_some() {
                 let accepted_superclass = superclass.as_ref().unwrap().accept(self).unwrap();
                 match accepted_superclass {
@@ -414,8 +415,11 @@ impl IVisitorStmt<Result<Option<Stmt>, Error>> for Interpreter {
                     _ => return Err(Error::new("Superclass must be a class.".to_string())),
                 }
 
-                self.new_environment(self.get_actual_env());
-                self.define_symbol("super", accepted_superclass.clone().unwrap());
+                //self.new_environment(self.get_actual_env());
+                let mut nenv = self.create_environment(env);
+                nenv.define("super", accepted_superclass.clone().unwrap());
+                env = Some(Rc::new(RefCell::new(nenv)));
+                //self.define_symbol("super", accepted_superclass.clone().unwrap());
 
                 Some(Box::new(accepted_superclass.unwrap()))
             } else {
@@ -427,15 +431,16 @@ impl IVisitorStmt<Result<Option<Stmt>, Error>> for Interpreter {
                 let fun_decl = extract_enum_value!(method, Stmt::FunDecl(c) => c);
                 let fun: Function = Function::from_stmt(
                     method.clone(),
-                    self.get_actual_env(),
+                    env.clone(),
+                    //self.get_actual_env(),
                     fun_decl.name == "init",
                 );
                 meths.insert(fun.name.clone(), fun);
             }
 
-            if superclass.is_some() {
-                self.drop_environment();
-            }
+            //if superclass.is_some() {
+            //    self.drop_environment();
+            //}
 
             let class: Class = Class {
                 name: name.lexeme.clone(),
