@@ -2,12 +2,12 @@ use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::rc::Rc;
 
-use crate::ast::{
+use crate::interpreter::ast::{
     Assign, Binary, Block, Class, ClassDecl, Error, Expr, Expression, FunDecl, Function, Get,
     Grouping, IVisitorExpr, IVisitorStmt, If, Instance, Literal, Logical, Print, Return, Set, Stmt,
     Super, This, Unary, Var, VarDecl, While,
 };
-use crate::operators::Operator;
+use crate::interpreter::operators::Operator;
 
 #[macro_export]
 macro_rules! extract_enum_value {
@@ -52,7 +52,6 @@ impl Environment {
     pub fn contains_key(&self, name: &str) -> bool {
         self.symbol_table.contains_key(name)
     }
-
 }
 
 #[derive(Debug, PartialEq)]
@@ -91,7 +90,7 @@ impl<'a> Iterator for EnvironmentIterator<'a> {
             return env;
         }
 
-        for _ in 0..self.interpreter.counter{
+        for _ in 0..self.interpreter.counter {
             env = env?.borrow().enclosing.as_ref().map(|e| Rc::clone(e));
             if env.clone()?.borrow().enclosing.is_none() {
                 break;
@@ -515,7 +514,10 @@ impl IVisitorExpr<Result<Option<Expr>, Error>> for Interpreter {
                         self.assign_symbol_at(*distance, var_name.as_str(), accepted_expr.clone())?;
                     }
                     None => {
-                        self.globals().as_ref().borrow_mut().define(&var_name, accepted_expr.clone());
+                        self.globals()
+                            .as_ref()
+                            .borrow_mut()
+                            .define(&var_name, accepted_expr.clone());
                     }
                 }
 
@@ -653,7 +655,9 @@ impl IVisitorExpr<Result<Option<Expr>, Error>> for Interpreter {
                             self.assign_symbol_at(*distance, &var_name, Expr::Instance(instance))?;
                         }
                         None => {
-                            self.globals().as_ref().borrow_mut()
+                            self.globals()
+                                .as_ref()
+                                .borrow_mut()
                                 .define(var_name, Expr::Instance(instance));
                         }
                     }
@@ -703,7 +707,7 @@ impl IVisitorExpr<Result<Option<Expr>, Error>> for Interpreter {
 mod tests {
     use ordered_float::OrderedFloat;
 
-    use crate::ast::{Expr, Literal};
+    use crate::interpreter::ast::{Expr, Literal};
 
     use super::Interpreter;
 

@@ -6,7 +6,7 @@ use std::{
     process::{Command, Stdio},
 };
 
-use crate::ast::{Expr, Literal};
+use crate::interpreter::ast::{Expr, Literal};
 
 pub struct TestReader {
     test_source: HashMap<String, String>,

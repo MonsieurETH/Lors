@@ -1,9 +1,9 @@
-use crate::ast::{
+use crate::interpreter::ast::{
     Assign, Binary, Block, Call, ClassDecl, Error, Expr, Expression, FunDecl, Get, Grouping, If,
     Literal, Logical, Print, Return, Set, Stmt, Super, This, Unary, Var, VarDecl, While,
 };
-use crate::lexer::{Token, TokenLiteral, TokenType};
-use crate::operators::Operator;
+use crate::interpreter::lexer::{Token, TokenLiteral, TokenType};
+use crate::interpreter::operators::Operator;
 
 #[derive(Debug, Clone)]
 pub struct Parser {

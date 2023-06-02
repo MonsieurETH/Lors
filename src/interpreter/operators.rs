@@ -1,4 +1,4 @@
-use crate::{
+use crate::interpreter::{
     ast::{Class, Error, Expr, Function, Literal},
     lexer::{Token, TokenType},
 };

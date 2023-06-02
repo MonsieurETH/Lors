@@ -1,16 +1,11 @@
-mod ast;
-mod lexer;
-mod operators;
-mod parser;
+mod interpreter;
 pub mod tools;
-mod visitors;
-mod chunk;
 
-use ast::{Error, Expr, IVisitorExpr, IVisitorStmt, Stmt};
-use lexer::Lexer;
-use parser::Parser;
+use interpreter::ast::{Error, Expr, IVisitorExpr, IVisitorStmt, Stmt};
+use interpreter::lexer::Lexer;
+use interpreter::parser::Parser;
+use interpreter::visitors::{interpreter::Interpreter, resolver::Resolver};
 use std::{env, fs};
-use visitors::{interpreter::Interpreter, resolver::Resolver};
 
 fn main() {
     let args: Vec<String> = env::args().collect();

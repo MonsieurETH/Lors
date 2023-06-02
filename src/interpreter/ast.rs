@@ -6,9 +6,9 @@ use std::rc::Rc;
 use ordered_float::OrderedFloat;
 
 use crate::extract_enum_value;
-use crate::lexer::Token;
-use crate::operators::Operator;
-use crate::visitors::interpreter::{Environment, Interpreter};
+use crate::interpreter::lexer::Token;
+use crate::interpreter::operators::Operator;
+use crate::interpreter::visitors::interpreter::{Environment, Interpreter};
 
 macro_rules! define_ast {
     (pub enum $root:ident { $($n:ident: $t:ident $b:tt),* $(,)? }) => {
@@ -174,15 +174,15 @@ impl Expr {
     }
 }
 
-impl From<crate::ast::Stmt> for crate::ast::Function {
-    fn from(value: crate::ast::Stmt) -> Function {
+impl From<crate::interpreter::ast::Stmt> for crate::interpreter::ast::Function {
+    fn from(value: crate::interpreter::ast::Stmt) -> Function {
         match value {
             Stmt::FunDecl(fun_decl) => Function {
                 name: fun_decl.name,
                 parameters: fun_decl
                     .parameters
                     .into_iter()
-                    .map(|x| crate::ast::Var::Token(x))
+                    .map(|x| crate::interpreter::ast::Var::Token(x))
                     .collect(),
                 body: fun_decl.body,
                 context: None,
@@ -193,8 +193,8 @@ impl From<crate::ast::Stmt> for crate::ast::Function {
     }
 }
 
-impl From<crate::ast::Token> for crate::ast::Literal {
-    fn from(value: crate::ast::Token) -> Self {
+impl From<crate::interpreter::ast::Token> for crate::interpreter::ast::Literal {
+    fn from(value: crate::interpreter::ast::Token) -> Self {
         Literal::Str(value.lexeme)
     }
 }
@@ -243,7 +243,7 @@ impl Function {
     }
 
     pub fn from_stmt(
-        value: crate::ast::Stmt,
+        value: crate::interpreter::ast::Stmt,
         env: Option<Rc<RefCell<Environment>>>,
         is_initializer: bool,
     ) -> Function {
@@ -253,7 +253,7 @@ impl Function {
                 parameters: fun_decl
                     .parameters
                     .into_iter()
-                    .map(|x| crate::ast::Var::Token(x))
+                    .map(|x| crate::interpreter::ast::Var::Token(x))
                     .collect(),
                 body: fun_decl.body,
                 context: env,

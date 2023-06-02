@@ -1,18 +1,26 @@
 #[derive(Debug, Clone)]
 pub enum OpCode {
     OP_RETURN,
-    OP_CONSTANT
+    OP_NEGATE,
+    OP_ADD,
+    OP_SUBTRACT,
+    OP_MULTIPLY,
+    OP_DIVIDE,
+    OP_CONSTANT,
 }
 
 #[derive(Debug, Clone)]
 pub struct Chunk {
     pub code: Vec<OpCode>,
-    pub lines: Vec<usize>
+    pub lines: Vec<usize>,
 }
 
 impl Chunk {
     pub fn new() -> Chunk {
-        Chunk { code: Vec::new(), lines: Vec::new() }
+        Chunk {
+            code: Vec::new(),
+            lines: Vec::new(),
+        }
     }
 
     pub fn write_chunk(&mut self, byte: OpCode, line: usize) {
@@ -41,5 +49,5 @@ impl<'a> Iterator for ChunkIterator<'a> {
 }*/
 
 pub struct ValueArray {
-    pub values: Vec<u8>
+    pub values: Vec<u8>,
 }

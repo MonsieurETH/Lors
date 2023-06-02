@@ -1,4 +1,4 @@
-use crate::ast::Error;
+use crate::interpreter::ast::Error;
 
 pub struct Lexer {
     source: String,
