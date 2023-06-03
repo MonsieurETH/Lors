@@ -24,9 +24,14 @@ pub struct Compiler {
     previous: Token,
     had_error: bool,
     panic_mode: bool,
+    rules: HashMap<TokenType, ParseRule>,
 }
 
 impl Compiler {
+    pub fn new() -> Self {
+        self.init_rules();
+    }
+
     pub fn compile(&mut self, source: String, chunk: Chunk) -> bool {
         let scanner = Scanner::init_scanner(source);
         self.had_error = false;
@@ -128,8 +133,27 @@ impl Compiler {
         }
     }
 
+    fn get_rule(token_type: TokenType) -> ParseRule {
+        if self.rules.contains_key(&token_type) {
+            return self.rules.get(&token_type).unwrap();
+        }
+
+        ParseRule {
+            prefix: None,
+            infix: None,
+            precedence: Precedence::None,
+        }
+    }
+
     fn parse_precedence(precedence: Precedence) {
-        todo!();
+        self.advance();
+        let prefix_rule = self.get_rule(self.previous.token_type).prefix;
+        if prefix_rule.is_none() {
+            self.error("Expect expression.".to_string());
+            return;
+        }
+
+        prefix_rule.unwrap().call(self);
     }
 
     fn expression() {
@@ -152,5 +176,70 @@ impl Compiler {
 
     fn emit_constant(value: f64) {
         self.emit_bytes(OpCode::Constant as u8, self.make_constant(value));
+    }
+
+    fn init_rules(self) {
+        self.rules.insert(
+            TokenType::LeftParen,
+            ParseRule {
+                prefix: Some(self.grouping),
+                infix: None,
+                precedence: Precedence::None,
+            },
+        );
+
+        self.rules.insert(
+            TokenType::Minus,
+            ParseRule {
+                prefix: Some(self.unary),
+                infix: Some(self.binary),
+                precedence: Precedence::None,
+            },
+        );
+
+        self.rules.insert(
+            TokenType::Plus,
+            ParseRule {
+                prefix: None,
+                infix: Some(self.binary),
+                precedence: Precedence::Term,
+            },
+        );
+
+        self.rules.insert(
+            TokenType::Slash,
+            ParseRule {
+                prefix: None,
+                infix: Some(self.binary),
+                precedence: Precedence::Factor,
+            },
+        );
+
+        self.rules.insert(
+            TokenType::Star,
+            ParseRule {
+                prefix: None,
+                infix: Some(self.binary),
+                precedence: Precedence::Factor,
+            },
+        );
+
+        self.rules.insert(
+            TokenType::Number,
+            ParseRule {
+                prefix: Some(self.number),
+                infix: None,
+                precedence: Precedence::None,
+            },
+        );
+
+        self.rules.insert(
+            TokenType::Eof,
+            ParseRule {
+                prefix: None,
+                infix: None,
+                precedence: Precedence::None,
+            },
+        );
     }
 }
