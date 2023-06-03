@@ -1,13 +1,13 @@
 use core::panic;
-use std::{collections::HashMap, env};
+use std::collections::HashMap;
 
 use crate::{
-    ast::{
+    extract_enum_value,
+    interpreter::ast::{
         Assign, Binary, Block, ClassDecl, Error, Expr, Expression, FunDecl, Get, Grouping,
         IVisitorExpr, IVisitorStmt, If, Literal, Logical, Print, Return, Set, Stmt, Super, This,
         Unary, Var, VarDecl, While,
     },
-    extract_enum_value,
 };
 
 use super::interpreter::Interpreter;
@@ -15,14 +15,12 @@ use super::interpreter::Interpreter;
 #[derive(Debug, PartialEq, Clone)]
 pub struct Scope {
     symbol_table: HashMap<String, bool>,
-    //interpreter: Interpreter,
 }
 
 impl Scope {
     pub fn new() -> Self {
         Scope {
             symbol_table: HashMap::new(),
-            //interpreter: Interpreter::new(),
         }
     }
 
@@ -109,7 +107,6 @@ impl<'a> Resolver<'a> {
                 return Ok(symbol);
             }
         }
-        //Ok(None)
         Err(Error::new(format!("Undefined variable '{:}'.", name)))
     }
 
@@ -126,7 +123,6 @@ impl<'a> Resolver<'a> {
             }
         }
         Ok(None)
-
     }
 
     pub fn contains_key(&self, name: &str) -> bool {
@@ -356,7 +352,8 @@ impl<'a> IVisitorExpr<Result<Option<Expr>, Error>> for Resolver<'a> {
                 && (self.get_non_global(&token.lexeme)?.ok_or(true) == Ok(false))
             {
                 return Err(Error::new(format!(
-                    "Error at '{}': Can't read local variable in its own initializer.", &token.lexeme
+                    "Error at '{}': Can't read local variable in its own initializer.",
+                    &token.lexeme
                 )));
             } else {
                 self.resolve_local(&mut expr.clone(), &token.lexeme);
