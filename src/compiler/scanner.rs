@@ -78,6 +78,7 @@ impl Scanner {
     }
 
     pub fn scan_token() -> Token {
+        self.skip_whitespace();
         self.start = self.current;
 
         if self.is_at_end() {
@@ -263,6 +264,32 @@ impl Scanner {
             lexeme: message.to_string(),
             line: self.line,
             pos: self.start,
+        }
+    }
+
+    fn skip_whitespace(&mut self) {
+        loop {
+            let c = self.peek();
+            match c {
+                ' ' | '\r' | '\t' => {
+                    self.advance();
+                }
+                '\n' => {
+                    self.line += 1;
+                    self.advance();
+                }
+                '/' => {
+                    if self.peek_next() == '/' {
+                        // A comment goes until the end of the line.
+                        while self.peek() != '\n' && !self.is_at_end() {
+                            self.advance();
+                        }
+                    } else {
+                        return;
+                    }
+                }
+                _ => return,
+            }
         }
     }
 }

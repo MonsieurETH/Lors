@@ -100,7 +100,7 @@ impl<'a> Resolver<'a> {
         self.scopes.last_mut().unwrap().define(name, true);
     }
 
-    pub fn get(&self, name: &str) -> Result<Option<bool>, Error> {
+    /*pub fn get(&self, name: &str) -> Result<Option<bool>, Error> {
         for env in self.scopes.iter().rev() {
             let symbol = env.retrieve(name);
             if symbol.is_some() {
@@ -108,7 +108,7 @@ impl<'a> Resolver<'a> {
             }
         }
         Err(Error::new(format!("Undefined variable '{:}'.", name)))
-    }
+    }*/
 
     pub fn get_non_global(&self, name: &str) -> Result<Option<bool>, Error> {
         let mut envs = self.scopes.iter().rev().peekable();
