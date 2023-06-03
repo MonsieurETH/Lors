@@ -1,12 +1,12 @@
 #[derive(Debug, Clone)]
 pub enum OpCode {
-    OP_RETURN,
-    OP_NEGATE,
-    OP_ADD,
-    OP_SUBTRACT,
-    OP_MULTIPLY,
-    OP_DIVIDE,
-    OP_CONSTANT,
+    Return,
+    Negate,
+    Add,
+    Subtract,
+    Multiply,
+    Divide,
+    Constant,
 }
 
 #[derive(Debug, Clone)]

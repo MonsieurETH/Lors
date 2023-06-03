@@ -25,9 +25,9 @@ impl Stack {
 }
 
 pub enum InterpretResult {
-    INTERPRET_OK,
-    INTERPRET_COMPILE_ERROR,
-    INTERPRET_RUNTIME_ERROR,
+    Ok,
+    CompileError,
+    RuntimeError,
 }
 
 impl VM {
@@ -45,7 +45,9 @@ impl VM {
     }
 
     pub fn interpret(&mut self, source: String) {
-        self.compile(source);
+        if !self.compile(source) {
+            return InterpretResult::CompileError;
+        }
         self.chunk = chunk;
         self.ip = 0;
 
@@ -60,19 +62,19 @@ impl VM {
         loop {
             let instruction = self.read_byte();
             match instruction {
-                OpCode::RETURN => {
+                OpCode::Return => {
                     println!("{}", self.stack.pop());
-                    return InterpretResult::INTERPRET_OK;
+                    return InterpretResult::Ok;
                 }
                 OpCode::NEGATE => {
                     self.stack.push(-self.stack.pop());
                     print!("{}", value);
                 }
-                OpCode::ADD => self.binary_op(u32::add),
-                OpCode::SUBTRACT => self.binary_op(u32::sub),
-                OpCode::MULTIPLY => self.binary_op(u32::mul),
-                OpCode::DIVIDE => self.binary_op(u32::div),
-                OpCode::OP_CONSTANT => {
+                OpCode::Add => self.binary_op(u32::add),
+                OpCode::Subtract => self.binary_op(u32::sub),
+                OpCode::Multiply => self.binary_op(u32::mul),
+                OpCode::Divide => self.binary_op(u32::div),
+                OpCode::Constant => {
                     let constant = self.read_constant();
                     self.stack.push(constant);
                     print!("{}", constant);
