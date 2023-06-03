@@ -1,5 +1,5 @@
 pub struct Compiler {
-    chunk: Chunk,
+    compiling_chunk: Chunk,
     current: Token,
     previous: Token,
     had_error: bool,
@@ -11,11 +11,18 @@ impl Compiler {
         let scanner = Scanner::init_scanner(source);
         self.had_error = false;
         self.panice_mode = false;
+        self.compiling_chunk = chunk;
+
         self.advance();
         self.expression();
         self.consume(TokenType::Eof, "Expect end of expression.");
+        self.end_compiler();
 
         !self.had_error
+    }
+
+    fn current_chunk(&self) -> &Chunk {
+        &self.compiling_chunk
     }
 
     fn error_at_current(message: String) {
@@ -47,5 +54,25 @@ impl Compiler {
         }
 
         self.error_at_current(message);
+    }
+
+    fn emit_byte(byte: u8) {
+        self.chunk.write_chunk(byte, self.previous.line);
+    }
+
+    fn emit_bytes(byte1: u8, byte2: u8) {
+        self.emit_byte(byte1);
+        self.emit_byte(byte2);
+    }
+
+    fn end_compiler() {
+        self.emit_return();
+        if self.debug_trace_execution && !self.had_error {
+            self.current_chunk().disassemble("code");
+        }
+    }
+
+    fn emit_return() {
+        self.emit_byte(OpCode::Return as u8);
     }
 }
