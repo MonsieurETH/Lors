@@ -51,7 +51,7 @@ impl VM {
         self.chunk = chunk;
         self.ip = 0;
 
-        return self.run();
+        self.run()
     }
 
     pub fn reset_stack(&mut self) {
