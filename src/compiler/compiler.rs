@@ -1,3 +1,23 @@
+pub enum Precedence {
+    None,
+    Assignment, // =
+    Or,         // or
+    And,        // and
+    Equality,   // == !=
+    Comparison, // < > <= >=
+    Term,       // + -
+    Factor,     // * /
+    Unary,      // ! -
+    Call,       // . ()
+    Primary,
+}
+
+pub struct ParseRule {
+    pub prefix: Option<fn()>,
+    pub infix: Option<fn()>,
+    pub precedence: Precedence,
+}
+
 pub struct Compiler {
     compiling_chunk: Chunk,
     current: Token,
@@ -72,7 +92,65 @@ impl Compiler {
         }
     }
 
+    fn binary() {
+        let operator_type = self.previous.token_type;
+
+        let rule = self.get_rule(operator_type);
+        self.parse_precedence(rule.precedence + 1);
+
+        match operator_type {
+            TokenType::Plus => self.emit_byte(OpCode::Add as u8),
+            TokenType::Minus => self.emit_byte(OpCode::Subtract as u8),
+            TokenType::Star => self.emit_byte(OpCode::Multiply as u8),
+            TokenType::Slash => self.emit_byte(OpCode::Divide as u8),
+            _ => unreachable!(),
+        }
+    }
+
+    fn grouping() {
+        self.expression();
+        self.consume(TokenType::RightParen, "Expect ')' after expression.");
+    }
+
+    fn number() {
+        let value = self.previous.lexeme.parse::<f64>().unwrap();
+        self.emit_constant(value);
+    }
+
+    fn unary() {
+        let operator_type = self.previous.token_type;
+
+        self.parse_precedence(Precedence::Unary);
+
+        match operator_type {
+            TokenType::Minus => self.emit_byte(OpCode::Negate as u8),
+            _ => unreachable!(),
+        }
+    }
+
+    fn parse_precedence(precedence: Precedence) {
+        todo!();
+    }
+
+    fn expression() {
+        self.parse_precedence(Precedence::Assignment);
+    }
+
     fn emit_return() {
         self.emit_byte(OpCode::Return as u8);
+    }
+
+    fn make_constant(value: f64) -> u8 {
+        let constant = self.current_chunk().add_constant(value);
+        if constant > u8::MAX {
+            self.error("Too many constants in one chunk.");
+            return 0;
+        }
+
+        constant as u8
+    }
+
+    fn emit_constant(value: f64) {
+        self.emit_bytes(OpCode::Constant as u8, self.make_constant(value));
     }
 }

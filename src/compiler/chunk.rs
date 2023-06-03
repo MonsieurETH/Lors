@@ -27,26 +27,12 @@ impl Chunk {
         self.code.push(byte);
         self.lines.push(line);
     }
-}
 
-/*pub struct ChunkIterator<'a> {
-        chunk: &'a Chunk,
-        pos: usize,
-}
-
-impl<'a> Iterator for ChunkIterator<'a> {
-    type Item = (&'a OpCode, usize);
-
-    fn next(&mut self) -> Option<Self::Item> {
-        let code = self.chunk.code.get(self.pos);
-        let line =  self.chunk.lines.get(self.pos);
-        self.pos += 1;
-        match (code, line) {
-            (Some(code), Some(line)) => Some((code, *line)),
-            _ => None
-        }
+    pub fn add_constant(&mut self, value: u8, line: usize) {
+        self.write_chunk(OpCode::Constant, line);
+        self.write_chunk(value, line);
     }
-}*/
+}
 
 pub struct ValueArray {
     pub values: Vec<u8>,
