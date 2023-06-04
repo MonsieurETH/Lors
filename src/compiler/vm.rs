@@ -7,17 +7,14 @@ pub struct VM {
 
 pub struct Stack {
     pub values: Vec<Value>,
-    pub stack_top: usize,
 }
 
 impl Stack {
     pub fn push(&mut self, value: Value) {
         self.values.push(value);
-        self.stack_top += 1;
     }
 
     pub fn pop(&mut self) -> Value {
-        self.stack_top -= 1;
         self.values.pop().unwrap()
     }
 }
@@ -30,10 +27,7 @@ pub enum InterpretResult {
 
 impl VM {
     pub fn initVM() -> VM {
-        let stack = Stack {
-            values: Vec::new(),
-            stack_top: 0,
-        };
+        let stack = Stack { values: Vec::new() };
         VM {
             chunk: Chunk::new(),
             ip: 0,
@@ -53,7 +47,12 @@ impl VM {
     }
 
     pub fn reset_stack(&mut self) {
-        self.stack.stack_top = 0;
+        self.stack.values.clear();
+    }
+
+    fn runtime_error(&mut self, message: String) {
+        println!("{}", message);
+        self.reset_stack();
     }
 
     pub fn run(&mut self) -> InterpretResult {
@@ -65,13 +64,17 @@ impl VM {
                     return InterpretResult::Ok;
                 }
                 OpCode::Negate => {
-                    self.stack.push(-self.stack.pop());
+                    let value = self.stack.pop();
+                    match value {
+                        Some(Value::Number(n)) => self.stack.push(Value::Number(-n)),
+                        None => return InterpretResult::RuntimeError,
+                    }
                     print!("{}", value);
                 }
-                OpCode::Add => self.binary_op(u32::add),
-                OpCode::Subtract => self.binary_op(u32::sub),
-                OpCode::Multiply => self.binary_op(u32::mul),
-                OpCode::Divide => self.binary_op(u32::div),
+                OpCode::Add => self.binary_op(Value::Number, u32::add),
+                OpCode::Subtract => self.binary_op(Value::Number, u32::sub),
+                OpCode::Multiply => self.binary_op(Value::Number, u32::mul),
+                OpCode::Divide => self.binary_op(Value::Number, u32::div),
                 OpCode::Constant => {
                     let constant = self.read_constant();
                     self.stack.push(constant);
@@ -94,9 +97,16 @@ impl VM {
         self.chunk.constants.values[index as usize]
     }
 
-    fn binary_op(&mut self, op: fn(u32, u32) -> u32) {
+    fn binary_op(&mut self, value_type: Value, op: fn(u32, u32) -> u32) {
+        let top = self.stack.values.len();
+        if top < 2 {
+            return self.runtime_error("Stack underflow".to_string());
+        }
         let b = self.stack.pop();
         let a = self.stack.pop();
+        if !a.is_number() || !b.is_number() {
+            return self.runtime_error("Operands must be numbers".to_string());
+        }
         self.stack.push(op(a, b));
     }
 }
