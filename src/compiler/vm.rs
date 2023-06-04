@@ -5,8 +5,6 @@ pub struct VM {
     pub debug_trace_execution: bool,
 }
 
-type Value = f64;
-
 pub struct Stack {
     pub values: Vec<Value>,
     pub stack_top: usize,
@@ -66,7 +64,7 @@ impl VM {
                     println!("{}", self.stack.pop());
                     return InterpretResult::Ok;
                 }
-                OpCode::NEGATE => {
+                OpCode::Negate => {
                     self.stack.push(-self.stack.pop());
                     print!("{}", value);
                 }

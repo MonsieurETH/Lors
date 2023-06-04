@@ -122,7 +122,7 @@ impl Compiler {
 
     fn number() {
         let value = self.previous.lexeme.parse::<f64>().unwrap();
-        self.emit_constant(value);
+        self.emit_constant(Value::Number(value));
     }
 
     fn unary() {
