@@ -24,6 +24,7 @@ pub struct Compiler {
     previous: Token,
     had_error: bool,
     panic_mode: bool,
+    debug_trace_execution: bool,
     rules: HashMap<TokenType, ParseRule>,
 }
 
@@ -93,7 +94,9 @@ impl Compiler {
     fn end_compiler() {
         self.emit_return();
         if self.debug_trace_execution && !self.had_error {
-            self.current_chunk().disassemble("code");
+            for chunk in self.current_chunk().code {
+                println!("{:?}", chunk);
+            }
         }
     }
 
@@ -154,6 +157,12 @@ impl Compiler {
         }
 
         prefix_rule.unwrap().call(self);
+
+        while precedence <= self.get_rule(self.current.token_type).precedence {
+            self.advance();
+            let infix_rule = self.get_rule(self.previous.token_type).infix.unwrap();
+            infix_rule.call(self);
+        }
     }
 
     fn expression() {
