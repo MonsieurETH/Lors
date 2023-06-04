@@ -62,6 +62,7 @@ pub struct Token {
 }
 
 pub struct Scanner {
+    source: String,
     start: usize,
     current: usize,
     line: usize,
@@ -77,7 +78,7 @@ impl Scanner {
         }
     }
 
-    pub fn scan_token() -> Token {
+    pub fn scan_token(self) -> Token {
         self.skip_whitespace();
         self.start = self.current;
 
@@ -96,43 +97,43 @@ impl Scanner {
         }
 
         match c {
-            '(' => makeToken(TokenType::LeftParen),
-            ')' => makeToken(TokenType::RightParen),
-            '{' => makeToken(TokenType::LeftBrace),
-            '}' => makeToken(TokenType::RightBrace),
-            ';' => makeToken(TokenType::Semicolon),
-            ',' => makeToken(TokenType::Comma),
-            '.' => makeToken(TokenType::Dot),
-            '-' => makeToken(TokenType::Minus),
-            '+' => makeToken(TokenType::Plus),
-            '/' => makeToken(TokenType::Slash),
-            '*' => makeToken(TokenType::Star),
+            '(' => self.make_token(TokenType::LeftParen),
+            ')' => self.make_token(TokenType::RightParen),
+            '{' => self.make_token(TokenType::LeftBrace),
+            '}' => self.make_token(TokenType::RightBrace),
+            ';' => self.make_token(TokenType::Semicolon),
+            ',' => self.make_token(TokenType::Comma),
+            '.' => self.make_token(TokenType::Dot),
+            '-' => self.make_token(TokenType::Minus),
+            '+' => self.make_token(TokenType::Plus),
+            '/' => self.make_token(TokenType::Slash),
+            '*' => self.make_token(TokenType::Star),
             '!' => {
-                if self.match_char('=') {
-                    makeToken(TokenType::BangEqual)
+                if self.match_next('=') {
+                    self.make_token(TokenType::BangEqual)
                 } else {
-                    makeToken(TokenType::Bang)
+                    self.make_token(TokenType::Bang)
                 }
             }
             '=' => {
-                if self.match_char('=') {
-                    makeToken(TokenType::EqualEqual)
+                if self.match_next('=') {
+                    self.make_token(TokenType::EqualEqual);
                 } else {
-                    makeToken(TokenType::Equal)
+                    self.make_token(TokenType::Equal);
                 }
             }
             '<' => {
-                if self.match_char('=') {
-                    makeToken(TokenType::LessEqual)
+                if self.match_next('=') {
+                    self.make_token(TokenType::LessEqual);
                 } else {
-                    makeToken(TokenType::Less)
+                    self.make_token(TokenType::Less);
                 }
             }
             '>' => {
-                if self.match_char('=') {
-                    makeToken(TokenType::GreaterEqual)
+                if self.match_next('=') {
+                    self.make_token(TokenType::GreaterEqual);
                 } else {
-                    makeToken(TokenType::Greater)
+                    self.make_token(TokenType::Greater);
                 }
             }
             '"' => self.string(),
@@ -149,7 +150,7 @@ impl Scanner {
         self.make_token(self.identifier_type())
     }
 
-    fn identifier_type() -> TokenType {
+    fn identifier_type(&mut self) -> TokenType {
         while self.peek().is_alphanumeric() {
             self.advance();
         }
@@ -175,7 +176,7 @@ impl Scanner {
             _ => TokenType::Identifier,
         };
 
-        self.make_token(token_type)
+        token_type
     }
 
     fn string(&mut self) -> Token {

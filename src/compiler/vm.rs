@@ -1,3 +1,5 @@
+use super::{chunk::Chunk, value::Value};
+
 pub struct VM {
     pub chunk: Chunk,
     pub ip: usize,

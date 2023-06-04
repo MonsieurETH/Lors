@@ -1,3 +1,11 @@
+use std::collections::HashMap;
+
+use super::{
+    chunk::{Chunk, OpCode},
+    scanner::{Scanner, Token, TokenType},
+    value::Value,
+};
+
 pub enum Precedence {
     None,
     Assignment, // =
@@ -33,10 +41,10 @@ impl Compiler {
         self.init_rules();
     }
 
-    pub fn compile(&mut self, source: String, chunk: Chunk) -> bool {
+    pub fn compile(self, source: String, chunk: Chunk) -> bool {
         let scanner = Scanner::init_scanner(source);
         self.had_error = false;
-        self.panice_mode = false;
+        self.panic_mode = false;
         self.compiling_chunk = chunk;
 
         self.advance();
@@ -51,15 +59,15 @@ impl Compiler {
         &self.compiling_chunk
     }
 
-    fn error_at_current(message: String) {
-        error_at(&self.current, message);
+    fn error_at_current(self, message: String) {
+        self.error_at(self.current, message);
     }
 
-    fn error(message: String) {
-        error_at(&self.previous, message);
+    fn error(self, message: String) {
+        self.error_at(self.previous, message);
     }
 
-    fn error_at(token: Token, message: String) {
+    fn error_at(self, token: Token, message: String) {
         if self.panic_mode {
             return;
         }
@@ -73,7 +81,7 @@ impl Compiler {
         self.had_error = true;
     }
 
-    fn consume(token_type: TokenType, message: String) {
+    fn consume(self, token_type: TokenType, message: String) {
         if self.current.token_type == token_type {
             self.advance();
             return;
@@ -82,16 +90,16 @@ impl Compiler {
         self.error_at_current(message);
     }
 
-    fn emit_byte(byte: u8) {
+    fn emit_byte(self, byte: u8) {
         self.chunk.write_chunk(byte, self.previous.line);
     }
 
-    fn emit_bytes(byte1: u8, byte2: u8) {
+    fn emit_bytes(self, byte1: u8, byte2: u8) {
         self.emit_byte(byte1);
         self.emit_byte(byte2);
     }
 
-    fn end_compiler() {
+    fn end_compiler(self) {
         self.emit_return();
         if self.debug_trace_execution && !self.had_error {
             for chunk in self.current_chunk().code {
@@ -100,7 +108,7 @@ impl Compiler {
         }
     }
 
-    fn binary() {
+    fn binary(self) {
         let operator_type = self.previous.token_type;
 
         let rule = self.get_rule(operator_type);
@@ -115,17 +123,20 @@ impl Compiler {
         }
     }
 
-    fn grouping() {
+    fn grouping(self) {
         self.expression();
-        self.consume(TokenType::RightParen, "Expect ')' after expression.");
+        self.consume(
+            TokenType::RightParen,
+            "Expect ')' after expression.".to_string(),
+        );
     }
 
-    fn number() {
+    fn number(self) {
         let value = self.previous.lexeme.parse::<f64>().unwrap();
         self.emit_constant(Value::Number(value));
     }
 
-    fn unary() {
+    fn unary(self) {
         let operator_type = self.previous.token_type;
 
         self.parse_precedence(Precedence::Unary);
@@ -136,7 +147,7 @@ impl Compiler {
         }
     }
 
-    fn get_rule(token_type: TokenType) -> ParseRule {
+    fn get_rule(self, token_type: TokenType) -> ParseRule {
         if self.rules.contains_key(&token_type) {
             return self.rules.get(&token_type).unwrap();
         }
@@ -148,7 +159,7 @@ impl Compiler {
         }
     }
 
-    fn parse_precedence(precedence: Precedence) {
+    fn parse_precedence(self, precedence: Precedence) {
         self.advance();
         let prefix_rule = self.get_rule(self.previous.token_type).prefix;
         if prefix_rule.is_none() {
@@ -165,25 +176,25 @@ impl Compiler {
         }
     }
 
-    fn expression() {
+    fn expression(self) {
         self.parse_precedence(Precedence::Assignment);
     }
 
-    fn emit_return() {
+    fn emit_return(self) {
         self.emit_byte(OpCode::Return as u8);
     }
 
-    fn make_constant(value: f64) -> u8 {
+    fn make_constant(self, value: f64) -> u8 {
         let constant = self.current_chunk().add_constant(value);
         if constant > u8::MAX {
-            self.error("Too many constants in one chunk.");
+            self.error("Too many constants in one chunk.".to_string());
             return 0;
         }
 
         constant as u8
     }
 
-    fn emit_constant(value: f64) {
+    fn emit_constant(self, value: f64) {
         self.emit_bytes(OpCode::Constant as u8, self.make_constant(value));
     }
 

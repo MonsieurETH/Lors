@@ -1,3 +1,4 @@
+mod compiler;
 mod interpreter;
 pub mod tools;
 
@@ -23,6 +24,8 @@ fn run_file(path: &String) {
 
 fn run_test(path: &String) {
     let source = fs::read_to_string(path).expect("Error reading file");
+
+    let scanner = Scanner::new(&source);
 
     let mut lexer = Lexer::new(&source);
     let res = lexer.scan_tokens();
