@@ -1,3 +1,5 @@
+
+#[derive(Debug, Clone, PartialEq)]
 pub enum Value {
     Bool(bool),
     Nil,
@@ -19,7 +21,7 @@ impl Value {
         }
     }
 
-    fn is_number(&self) -> bool {
+    pub fn is_number(&self) -> bool {
         match self {
             Value::Number(_) => true,
             _ => false,

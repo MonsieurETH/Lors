@@ -6,6 +6,7 @@ use super::{
     value::Value,
 };
 
+#[derive(Debug, PartialEq, PartialOrd)]
 pub enum Precedence {
     None,
     Assignment, // =
@@ -21,8 +22,8 @@ pub enum Precedence {
 }
 
 pub struct ParseRule {
-    pub prefix: Option<fn()>,
-    pub infix: Option<fn()>,
+    pub prefix: Option<fn(&mut Compiler)>,
+    pub infix: Option<fn(&mut Compiler)>,
     pub precedence: Precedence,
 }
 
@@ -33,55 +34,80 @@ pub struct Compiler {
     had_error: bool,
     panic_mode: bool,
     debug_trace_execution: bool,
+    scanner: Scanner,
     rules: HashMap<TokenType, ParseRule>,
 }
 
 impl Compiler {
     pub fn new() -> Self {
-        self.init_rules();
+        let mut compi = Self {
+            compiling_chunk: Chunk::new(),
+            current: Token::new(),
+            previous: Token::new(),
+            had_error: false,
+            panic_mode: false,
+            debug_trace_execution: false,
+            scanner: Scanner::init_scanner(String::new()),
+            rules: HashMap::new(),
+        };
+        compi.init_rules();
+        compi
     }
 
-    pub fn compile(self, source: String, chunk: Chunk) -> bool {
-        let scanner = Scanner::init_scanner(source);
+    pub fn compile(&mut self, source: String, chunk: Chunk) -> bool {
+        let mut scanner = Scanner::init_scanner(source);
         self.had_error = false;
         self.panic_mode = false;
         self.compiling_chunk = chunk;
 
         self.advance();
         self.expression();
-        self.consume(TokenType::Eof, "Expect end of expression.");
+        self.consume(TokenType::Eof, String::from("Expect end of expression."));
+
         self.end_compiler();
 
         !self.had_error
+    }
+
+    fn advance(&mut self) {
+        self.previous = self.current;
+
+        loop {
+            self.current = self.scanner.scan_token();
+            if self.current.token_type != TokenType::Error {
+                break;
+            }
+
+            self.error_at_current(self.current.lexeme);
+        }
     }
 
     fn current_chunk(&self) -> &Chunk {
         &self.compiling_chunk
     }
 
-    fn error_at_current(self, message: String) {
+    fn error_at_current(&mut self, message: String) {
         self.error_at(self.current, message);
     }
 
-    fn error(self, message: String) {
+    fn error(&mut self, message: String) {
         self.error_at(self.previous, message);
     }
 
-    fn error_at(self, token: Token, message: String) {
+    fn error_at(&mut self, token: Token, message: String) {
         if self.panic_mode {
             return;
         }
-        self.panic_mode = true;
         if token.token_type == TokenType::Eof {
-            report(token.line, " at end", message);
+            println!("Error at end: {}", message);
         } else {
-            report(token.line, format!(" at '{}'", token.lexeme), message);
+            println!("Error at line {}: {}", token.line, message)
         }
 
         self.had_error = true;
     }
 
-    fn consume(self, token_type: TokenType, message: String) {
+    fn consume(&mut self, token_type: TokenType, message: String) {
         if self.current.token_type == token_type {
             self.advance();
             return;
@@ -90,16 +116,16 @@ impl Compiler {
         self.error_at_current(message);
     }
 
-    fn emit_byte(self, byte: u8) {
-        self.chunk.write_chunk(byte, self.previous.line);
+    fn emit_byte(&mut self, byte: OpCode) {
+        self.compiling_chunk.write_chunk(byte, self.previous.line);
     }
 
-    fn emit_bytes(self, byte1: u8, byte2: u8) {
+    fn emit_bytes(&mut self, byte1: OpCode, byte2: OpCode) {
         self.emit_byte(byte1);
         self.emit_byte(byte2);
     }
 
-    fn end_compiler(self) {
+    fn end_compiler(&mut self) {
         self.emit_return();
         if self.debug_trace_execution && !self.had_error {
             for chunk in self.current_chunk().code {
@@ -108,22 +134,22 @@ impl Compiler {
         }
     }
 
-    fn binary(self) {
+    fn binary(&mut self) {
         let operator_type = self.previous.token_type;
 
         let rule = self.get_rule(operator_type);
         self.parse_precedence(rule.precedence + 1);
 
         match operator_type {
-            TokenType::Plus => self.emit_byte(OpCode::Add as u8),
-            TokenType::Minus => self.emit_byte(OpCode::Subtract as u8),
-            TokenType::Star => self.emit_byte(OpCode::Multiply as u8),
-            TokenType::Slash => self.emit_byte(OpCode::Divide as u8),
+            TokenType::Plus => self.emit_byte(OpCode::Add ),
+            TokenType::Minus => self.emit_byte(OpCode::Subtract ),
+            TokenType::Star => self.emit_byte(OpCode::Multiply ),
+            TokenType::Slash => self.emit_byte(OpCode::Divide ),
             _ => unreachable!(),
         }
     }
 
-    fn grouping(self) {
+    fn grouping(&mut self) {
         self.expression();
         self.consume(
             TokenType::RightParen,
@@ -131,25 +157,25 @@ impl Compiler {
         );
     }
 
-    fn number(self) {
+    fn number(&mut self) {
         let value = self.previous.lexeme.parse::<f64>().unwrap();
         self.emit_constant(Value::Number(value));
     }
 
-    fn unary(self) {
+    fn unary(&mut self) {
         let operator_type = self.previous.token_type;
 
         self.parse_precedence(Precedence::Unary);
 
         match operator_type {
-            TokenType::Minus => self.emit_byte(OpCode::Negate as u8),
+            TokenType::Minus => self.emit_byte(OpCode::Negate ),
             _ => unreachable!(),
         }
     }
 
     fn get_rule(self, token_type: TokenType) -> ParseRule {
         if self.rules.contains_key(&token_type) {
-            return self.rules.get(&token_type).unwrap();
+            return *self.rules.get(&token_type).unwrap();
         }
 
         ParseRule {
@@ -159,7 +185,7 @@ impl Compiler {
         }
     }
 
-    fn parse_precedence(self, precedence: Precedence) {
+    fn parse_precedence(&mut self, precedence: Precedence) {
         self.advance();
         let prefix_rule = self.get_rule(self.previous.token_type).prefix;
         if prefix_rule.is_none() {
@@ -167,42 +193,40 @@ impl Compiler {
             return;
         }
 
-        prefix_rule.unwrap().call(self);
+        if let Some(prefix) = prefix_rule {
+            prefix(self);
+        }
+        //prefix_rule.unwrap().call(self);
 
         while precedence <= self.get_rule(self.current.token_type).precedence {
             self.advance();
-            let infix_rule = self.get_rule(self.previous.token_type).infix.unwrap();
-            infix_rule.call(self);
+            let infix_rule = self.get_rule(self.previous.token_type).infix;
+            if infix_rule.is_none() {
+                break;
+            } else {
+                infix_rule.unwrap()(self);
+            }
         }
     }
 
-    fn expression(self) {
+    fn expression(&mut self) {
         self.parse_precedence(Precedence::Assignment);
     }
 
-    fn emit_return(self) {
-        self.emit_byte(OpCode::Return as u8);
+    fn emit_return(&mut self) {
+        self.emit_byte(OpCode::Return );
     }
 
-    fn make_constant(self, value: f64) -> u8 {
-        let constant = self.current_chunk().add_constant(value);
-        if constant > u8::MAX {
-            self.error("Too many constants in one chunk.".to_string());
-            return 0;
-        }
-
-        constant as u8
+    fn emit_constant(&mut self, value: Value) {
+        self.current_chunk().add_constant(value, 0);
+        //self.emit_bytes(OpCode::Constant, self.make_constant(value));
     }
 
-    fn emit_constant(self, value: f64) {
-        self.emit_bytes(OpCode::Constant as u8, self.make_constant(value));
-    }
-
-    fn init_rules(self) {
+    fn init_rules(&mut self) {
         self.rules.insert(
             TokenType::LeftParen,
             ParseRule {
-                prefix: Some(self.grouping),
+                prefix: Some(Compiler::grouping),
                 infix: None,
                 precedence: Precedence::None,
             },
@@ -211,8 +235,8 @@ impl Compiler {
         self.rules.insert(
             TokenType::Minus,
             ParseRule {
-                prefix: Some(self.unary),
-                infix: Some(self.binary),
+                prefix: Some(Compiler::unary),
+                infix: Some(Compiler::binary),
                 precedence: Precedence::None,
             },
         );
@@ -221,7 +245,7 @@ impl Compiler {
             TokenType::Plus,
             ParseRule {
                 prefix: None,
-                infix: Some(self.binary),
+                infix: Some(Compiler::binary),
                 precedence: Precedence::Term,
             },
         );
@@ -230,7 +254,7 @@ impl Compiler {
             TokenType::Slash,
             ParseRule {
                 prefix: None,
-                infix: Some(self.binary),
+                infix: Some(Compiler::binary),
                 precedence: Precedence::Factor,
             },
         );
@@ -239,7 +263,7 @@ impl Compiler {
             TokenType::Star,
             ParseRule {
                 prefix: None,
-                infix: Some(self.binary),
+                infix: Some(Compiler::binary),
                 precedence: Precedence::Factor,
             },
         );
@@ -247,16 +271,7 @@ impl Compiler {
         self.rules.insert(
             TokenType::Number,
             ParseRule {
-                prefix: Some(self.number),
-                infix: None,
-                precedence: Precedence::None,
-            },
-        );
-
-        self.rules.insert(
-            TokenType::Eof,
-            ParseRule {
-                prefix: None,
+                prefix: Some(Compiler::number),
                 infix: None,
                 precedence: Precedence::None,
             },

@@ -61,6 +61,17 @@ pub struct Token {
     pub pos: usize,
 }
 
+impl Token {
+    pub fn new() -> Token {
+        Token {
+            token_type: TokenType::Error,
+            lexeme: String::new(),
+            line: 0,
+            pos: 0,
+        }
+    }
+}
+
 pub struct Scanner {
     source: String,
     start: usize,
@@ -78,7 +89,7 @@ impl Scanner {
         }
     }
 
-    pub fn scan_token(self) -> Token {
+    pub fn scan_token(&mut self) -> Token {
         self.skip_whitespace();
         self.start = self.current;
 
@@ -96,7 +107,7 @@ impl Scanner {
             return self.number();
         }
 
-        match c {
+        let token = match c {
             '(' => self.make_token(TokenType::LeftParen),
             ')' => self.make_token(TokenType::RightParen),
             '{' => self.make_token(TokenType::LeftBrace),
@@ -117,27 +128,27 @@ impl Scanner {
             }
             '=' => {
                 if self.match_next('=') {
-                    self.make_token(TokenType::EqualEqual);
+                    self.make_token(TokenType::EqualEqual)
                 } else {
-                    self.make_token(TokenType::Equal);
+                    self.make_token(TokenType::Equal)
                 }
             }
             '<' => {
                 if self.match_next('=') {
-                    self.make_token(TokenType::LessEqual);
+                    self.make_token(TokenType::LessEqual)
                 } else {
-                    self.make_token(TokenType::Less);
+                    self.make_token(TokenType::Less)
                 }
             }
             '>' => {
                 if self.match_next('=') {
-                    self.make_token(TokenType::GreaterEqual);
+                    self.make_token(TokenType::GreaterEqual)
                 } else {
-                    self.make_token(TokenType::Greater);
+                    self.make_token(TokenType::Greater)
                 }
             }
             '"' => self.string(),
-        }
+        };
 
         self.error_token("Unexpected character.")
     }
@@ -215,7 +226,7 @@ impl Scanner {
         self.current >= self.source.len()
     }
 
-    fn advance(&mut self) -> char {
+    pub fn advance(&mut self) -> char {
         let c = self.peek();
         self.current += 1;
         c
