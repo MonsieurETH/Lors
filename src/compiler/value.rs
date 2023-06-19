@@ -27,4 +27,26 @@ impl Value {
             _ => false,
         }
     }
+
+    pub fn as_bool(&self) -> bool {
+        match self {
+            Value::Bool(b) => *b,
+            _ => false,
+        }
+    }
+
+    pub fn as_number(&self) -> f64 {
+        match self {
+            Value::Number(n) => *n,
+            _ => 0.0,
+        }
+    }
+
+    pub fn from_f64(n: f64) -> Self {
+        Value::Number(n)
+    }
+
+    pub fn from_bool(b: bool) -> Self {
+        Value::Bool(b)
+    }
 }

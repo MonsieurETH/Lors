@@ -2,6 +2,11 @@ mod compiler;
 mod interpreter;
 pub mod tools;
 
+#[macro_use]
+extern crate num_derive;
+extern crate num_traits;
+
+use crate::compiler::scanner::Scanner;
 use interpreter::ast::{Error, Expr, IVisitorExpr, IVisitorStmt, Stmt};
 use interpreter::lexer::Lexer;
 use interpreter::parser::Parser;

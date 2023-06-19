@@ -76,10 +76,10 @@ impl VM {
                     }
                     print!("{:?}", value.unwrap());
                 }
-                OpCode::Add => self.binary_op(Value::Number, u32::add),
-                OpCode::Subtract => self.binary_op(Value::Number, u32::sub),
-                OpCode::Multiply => self.binary_op(Value::Number, u32::mul),
-                OpCode::Divide => self.binary_op(Value::Number, u32::div),
+                OpCode::Add => self.binary_op(OpCode::Add),
+                OpCode::Subtract => self.binary_op(OpCode::Subtract),
+                OpCode::Multiply => self.binary_op(OpCode::Multiply),
+                OpCode::Divide => self.binary_op(OpCode::Divide),
                 OpCode::Constant => {
                     let constant: Value = self.read_constant();
                     self.stack.push(constant);
@@ -102,7 +102,7 @@ impl VM {
         self.chunk.constants[index as usize]
     }
 
-    fn binary_op(&mut self, value_type: Value, op: fn(Value, Value) -> Value) {
+    fn binary_op(&mut self, op: OpCode) {
         let top = self.stack.values.len();
         if top < 2 {
             return self.runtime_error("Stack underflow".to_string());
@@ -112,6 +112,15 @@ impl VM {
         if !a.is_number() || !b.is_number() {
             return self.runtime_error("Operands must be numbers".to_string());
         }
-        self.stack.push(op(a, b));
+
+        let res = match op {
+            OpCode::Add => a.as_number() + b.as_number(),
+            OpCode::Subtract => a.as_number() - b.as_number(),
+            OpCode::Multiply => a.as_number() * b.as_number(),
+            OpCode::Divide => a.as_number() / b.as_number(),
+            _ => unreachable!(),
+        };
+
+        self.stack.push(Value::from_f64(res));
     }
 }

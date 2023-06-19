@@ -1,14 +1,16 @@
 use std::collections::HashMap;
 
+use num_traits::FromPrimitive;    
+
 use super::{
     chunk::{Chunk, OpCode},
     scanner::{Scanner, Token, TokenType},
     value::Value,
 };
 
-#[derive(Debug, PartialEq, PartialOrd)]
+#[derive(Debug, PartialEq, PartialOrd, FromPrimitive)]
 pub enum Precedence {
-    None,
+    None = 0,
     Assignment, // =
     Or,         // or
     And,        // and
@@ -21,11 +23,22 @@ pub enum Precedence {
     Primary,
 }
 
+impl Precedence {
+    fn next(self) -> Precedence {
+        match FromPrimitive::from_u8(self as u8 + 1) {
+            Some(d2) => d2,
+            None => FromPrimitive::from_u8(0).unwrap(),
+        }
+    }
+}
+
 pub struct ParseRule {
     pub prefix: Option<fn(&mut Compiler)>,
     pub infix: Option<fn(&mut Compiler)>,
     pub precedence: Precedence,
 }
+
+
 
 pub struct Compiler {
     compiling_chunk: Chunk,
@@ -138,7 +151,7 @@ impl Compiler {
         let operator_type = self.previous.token_type;
 
         let rule = self.get_rule(operator_type);
-        self.parse_precedence(rule.precedence + 1);
+        self.parse_precedence(rule.precedence.next());
 
         match operator_type {
             TokenType::Plus => self.emit_byte(OpCode::Add ),
