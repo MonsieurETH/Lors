@@ -6,7 +6,7 @@ pub mod tools;
 extern crate num_derive;
 extern crate num_traits;
 
-use crate::compiler::scanner::Scanner;
+use compiler::vm::{VM, InterpretResult};
 use interpreter::ast::{Error, Expr, IVisitorExpr, IVisitorStmt, Stmt};
 use interpreter::lexer::Lexer;
 use interpreter::parser::Parser;
@@ -23,48 +23,31 @@ fn main() {
 }
 
 fn run_file(path: &String) {
-    let content = fs::read_to_string(path).expect("Error reading file");
-    let _had_error = run(&content);
+    println!("Running file: {}", path);
+    
+    //let content = fs::read_to_string(path).expect("Error reading file");
+    //let _had_error = run(&content);
+    run_test(path);
 }
 
 fn run_test(path: &String) {
+    println!("Running test: {}", path);
     let source = fs::read_to_string(path).expect("Error reading file");
 
-    let scanner = Scanner::new(&source);
-
-    let mut lexer = Lexer::new(&source);
-    let res = lexer.scan_tokens();
+    let mut vm = VM::init_vm();
+    println!("Source: {}", source);
+    let res = vm.interpret(&source);
     match res {
-        Ok(_) => {}
-        Err(e) => {
-            println!("{:?}", e.msg);
-            return;
+        InterpretResult::Ok => {
+            println!("Result OK");
+        }
+        InterpretResult::CompileError => {
+            println!("Compile error");
+        }
+        InterpretResult::RuntimeError => {
+            println!("Runtime error");
         }
     }
-
-    let mut parser: Parser = Parser::new(lexer.tokens);
-    let ast = parser.parse();
-
-    let mut interpreter: Interpreter = Interpreter::new();
-
-    let only_ok = ast.iter().filter(|result| result.is_ok());
-    if only_ok.count() != ast.len() {
-        let only_err = ast.iter().filter(|result| result.is_err());
-        for err in only_err {
-            println!("{:?}", err.as_ref().unwrap_err().msg);
-            return;
-        }
-    }
-    let mut resolver: Resolver = Resolver::new(&mut interpreter);
-    let res = apply_visitor(&mut resolver, &ast);
-
-    if !res {
-        return;
-    }
-
-    apply_visitor(&mut interpreter, &ast);
-
-    let _ = ast.iter().filter(|result| result.is_err());
 }
 
 type ResultStmt = Result<Option<Stmt>, Error>;

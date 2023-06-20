@@ -4,11 +4,11 @@ use num_traits::FromPrimitive;
 
 use super::{
     chunk::{Chunk, OpCode},
-    scanner::{Scanner, Token, TokenType},
+    scanner::{Scanner, Token, TokenType, self},
     value::Value,
 };
 
-#[derive(Debug, PartialEq, PartialOrd, FromPrimitive)]
+#[derive(Debug, PartialEq, PartialOrd, Clone, FromPrimitive)]
 pub enum Precedence {
     None = 0,
     Assignment, // =
@@ -32,6 +32,7 @@ impl Precedence {
     }
 }
 
+#[derive(Clone)]
 pub struct ParseRule {
     pub prefix: Option<fn(&mut Compiler)>,
     pub infix: Option<fn(&mut Compiler)>,
@@ -41,7 +42,7 @@ pub struct ParseRule {
 
 
 pub struct Compiler {
-    compiling_chunk: Chunk,
+    pub compiling_chunk: Chunk,
     current: Token,
     previous: Token,
     had_error: bool,
@@ -52,38 +53,41 @@ pub struct Compiler {
 }
 
 impl Compiler {
-    pub fn new() -> Self {
+    pub fn new(source: &String) -> Self {
+        let mut scanner = Scanner::init_scanner(source);
+        let current = scanner.scan_token();
         let mut compi = Self {
             compiling_chunk: Chunk::new(),
-            current: Token::new(),
+            current,
             previous: Token::new(),
             had_error: false,
             panic_mode: false,
             debug_trace_execution: false,
-            scanner: Scanner::init_scanner(String::new()),
+            scanner,
             rules: HashMap::new(),
         };
         compi.init_rules();
         compi
     }
 
-    pub fn compile(&mut self, source: String, chunk: Chunk) -> bool {
-        let mut scanner = Scanner::init_scanner(source);
+    pub fn compile(&mut self, chunk: &Chunk) -> bool {
         self.had_error = false;
         self.panic_mode = false;
-        self.compiling_chunk = chunk;
+        self.compiling_chunk = chunk.clone();
+        println!("Compiling: {:?}", self.compiling_chunk.code);
 
         self.advance();
         self.expression();
-        self.consume(TokenType::Eof, String::from("Expect end of expression."));
+        //self.consume(TokenType::Eof, "Expect end of expression.");
 
         self.end_compiler();
+        println!("Final: {:?}", self.compiling_chunk.code);
 
         !self.had_error
     }
 
     fn advance(&mut self) {
-        self.previous = self.current;
+        self.previous = self.current.clone();
 
         loop {
             self.current = self.scanner.scan_token();
@@ -91,23 +95,26 @@ impl Compiler {
                 break;
             }
 
-            self.error_at_current(self.current.lexeme);
+            let lexeme = self.current.lexeme.clone();
+            self.error_at_current(&lexeme);
         }
     }
 
-    fn current_chunk(&self) -> &Chunk {
-        &self.compiling_chunk
+    fn current_chunk(&mut self) -> &mut Chunk {
+        &mut self.compiling_chunk
     }
 
-    fn error_at_current(&mut self, message: String) {
-        self.error_at(self.current, message);
+    fn error_at_current(&mut self, message: &str) {
+        let curr = self.current.clone();
+        self.error_at(&curr, message);
     }
 
-    fn error(&mut self, message: String) {
-        self.error_at(self.previous, message);
+    fn error(&mut self, message: &str) {
+        let prev = self.previous.clone();
+        self.error_at(&prev, message);
     }
 
-    fn error_at(&mut self, token: Token, message: String) {
+    fn error_at(&mut self, token: &Token, message: &str) {
         if self.panic_mode {
             return;
         }
@@ -120,7 +127,7 @@ impl Compiler {
         self.had_error = true;
     }
 
-    fn consume(&mut self, token_type: TokenType, message: String) {
+    fn consume(&mut self, token_type: TokenType, message: &str) {
         if self.current.token_type == token_type {
             self.advance();
             return;
@@ -141,23 +148,23 @@ impl Compiler {
     fn end_compiler(&mut self) {
         self.emit_return();
         if self.debug_trace_execution && !self.had_error {
-            for chunk in self.current_chunk().code {
+            for chunk in &self.current_chunk().code {
                 println!("{:?}", chunk);
             }
         }
     }
 
     fn binary(&mut self) {
-        let operator_type = self.previous.token_type;
+        let operator_type = self.previous.token_type.clone();
 
-        let rule = self.get_rule(operator_type);
+        let rule = self.get_rule(&operator_type);
         self.parse_precedence(rule.precedence.next());
 
         match operator_type {
-            TokenType::Plus => self.emit_byte(OpCode::Add ),
-            TokenType::Minus => self.emit_byte(OpCode::Subtract ),
-            TokenType::Star => self.emit_byte(OpCode::Multiply ),
-            TokenType::Slash => self.emit_byte(OpCode::Divide ),
+            TokenType::Plus => self.emit_byte(OpCode::Add),
+            TokenType::Minus => self.emit_byte(OpCode::Subtract),
+            TokenType::Star => self.emit_byte(OpCode::Multiply),
+            TokenType::Slash => self.emit_byte(OpCode::Divide),
             _ => unreachable!(),
         }
     }
@@ -166,7 +173,7 @@ impl Compiler {
         self.expression();
         self.consume(
             TokenType::RightParen,
-            "Expect ')' after expression.".to_string(),
+            "Expect ')' after expression.",
         );
     }
 
@@ -176,7 +183,7 @@ impl Compiler {
     }
 
     fn unary(&mut self) {
-        let operator_type = self.previous.token_type;
+        let operator_type = self.previous.token_type.clone();
 
         self.parse_precedence(Precedence::Unary);
 
@@ -186,9 +193,9 @@ impl Compiler {
         }
     }
 
-    fn get_rule(self, token_type: TokenType) -> ParseRule {
+    fn get_rule(&self, token_type: &TokenType) -> ParseRule {
         if self.rules.contains_key(&token_type) {
-            return *self.rules.get(&token_type).unwrap();
+            return self.rules.get(&token_type).unwrap().clone();
         }
 
         ParseRule {
@@ -200,20 +207,19 @@ impl Compiler {
 
     fn parse_precedence(&mut self, precedence: Precedence) {
         self.advance();
-        let prefix_rule = self.get_rule(self.previous.token_type).prefix;
+        let prefix_rule = self.get_rule(&self.previous.token_type).prefix;
         if prefix_rule.is_none() {
-            self.error("Expect expression.".to_string());
+            self.error(&"Expect expression.");
             return;
         }
 
         if let Some(prefix) = prefix_rule {
             prefix(self);
         }
-        //prefix_rule.unwrap().call(self);
 
-        while precedence <= self.get_rule(self.current.token_type).precedence {
+        while precedence <= self.get_rule(&self.current.token_type).precedence {
             self.advance();
-            let infix_rule = self.get_rule(self.previous.token_type).infix;
+            let infix_rule = self.get_rule(&self.previous.token_type).infix;
             if infix_rule.is_none() {
                 break;
             } else {
@@ -231,8 +237,8 @@ impl Compiler {
     }
 
     fn emit_constant(&mut self, value: Value) {
-        self.current_chunk().add_constant(value, 0);
-        //self.emit_bytes(OpCode::Constant, self.make_constant(value));
+        let chunk = self.current_chunk();
+        chunk.add_constant(value, 0);
     }
 
     fn init_rules(&mut self) {

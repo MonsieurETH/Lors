@@ -28,7 +28,7 @@ pub enum InterpretResult {
 }
 
 impl VM {
-    pub fn initVM() -> VM {
+    pub fn init_vm() -> VM {
         let stack = Stack { values: Vec::new() };
         VM {
             chunk: Chunk::new(),
@@ -38,15 +38,17 @@ impl VM {
         }
     }
 
-    pub fn interpret(&mut self, source: String) -> InterpretResult{
+    pub fn interpret(&mut self, source: &String) -> InterpretResult{
 
-        let mut compi = Compiler::new();
-        self.chunk = Chunk::new();
+        let mut compi = Compiler::new(source);
 
-        if !compi.compile(source, self.chunk) {
+        if !compi.compile(&self.chunk) {
             return InterpretResult::CompileError;
+        } else {
+            self.chunk = compi.compiling_chunk.clone();
         }
         self.ip = 0;
+        println!("Code: {:?}", self.chunk.code);
 
         self.run()
     }
@@ -82,8 +84,8 @@ impl VM {
                 OpCode::Divide => self.binary_op(OpCode::Divide),
                 OpCode::Constant => {
                     let constant: Value = self.read_constant();
-                    self.stack.push(constant);
                     print!("{:?}", constant);
+                    self.stack.push(constant);
                 }
             }
 
@@ -92,14 +94,14 @@ impl VM {
     }
 
     fn read_byte(&mut self) -> OpCode {
-        let byte = self.chunk.code[self.ip];
+        let byte = &self.chunk.code[self.ip];
         self.ip += 1;
-        byte
+        byte.clone()
     }
 
     fn read_constant(&mut self) -> Value {
         let index = self.read_byte();
-        self.chunk.constants[index as usize]
+        self.chunk.constants[index as usize].clone()
     }
 
     fn binary_op(&mut self, op: OpCode) {

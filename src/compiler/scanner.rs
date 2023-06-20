@@ -80,9 +80,9 @@ pub struct Scanner {
 }
 
 impl Scanner {
-    pub fn init_scanner(source: String) -> Scanner {
+    pub fn init_scanner(source: &String) -> Scanner {
         Scanner {
-            source,
+            source: source.to_string(),
             start: 0,
             current: 0,
             line: 1,
@@ -148,9 +148,12 @@ impl Scanner {
                 }
             }
             '"' => self.string(),
+            _ => self.error_token("Unexpected character."),
         };
 
-        self.error_token("Unexpected character.")
+        token
+
+        
     }
 
     fn identifier(&mut self) -> Token {
@@ -158,7 +161,8 @@ impl Scanner {
             self.advance();
         }
 
-        self.make_token(self.identifier_type())
+        let token_type = self.identifier_type();
+        self.make_token(token_type)
     }
 
     fn identifier_type(&mut self) -> TokenType {
