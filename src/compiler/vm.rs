@@ -82,14 +82,14 @@ impl VM {
                 OpCode::Subtract => self.binary_op(OpCode::Subtract),
                 OpCode::Multiply => self.binary_op(OpCode::Multiply),
                 OpCode::Divide => self.binary_op(OpCode::Divide),
-                OpCode::Constant => {
-                    let constant: Value = self.read_constant();
-                    print!("{:?}", constant);
-                    self.stack.push(constant);
+                OpCode::Constant(value) => {
+                    //let constant: Value = self.read_constant();
+                    print!("{:?}", value);
+                    self.stack.push(value);
                 }
             }
 
-            self.ip += 1;
+            //self.ip += 1;
         }
     }
 
@@ -101,11 +101,16 @@ impl VM {
 
     fn read_constant(&mut self) -> Value {
         let index = self.read_byte();
-        self.chunk.constants[index as usize].clone()
+        match index {
+            OpCode::Constant(value) => value,
+            _ => unreachable!(),
+        }
+        //self.chunk.constants[index as usize].clone()
     }
 
     fn binary_op(&mut self, op: OpCode) {
         let top = self.stack.values.len();
+        println!("top: {}", top);
         if top < 2 {
             return self.runtime_error("Stack underflow".to_string());
         }

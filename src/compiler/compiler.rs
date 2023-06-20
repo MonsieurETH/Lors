@@ -74,14 +74,12 @@ impl Compiler {
         self.had_error = false;
         self.panic_mode = false;
         self.compiling_chunk = chunk.clone();
-        println!("Compiling: {:?}", self.compiling_chunk.code);
 
         self.advance();
         self.expression();
         //self.consume(TokenType::Eof, "Expect end of expression.");
 
         self.end_compiler();
-        println!("Final: {:?}", self.compiling_chunk.code);
 
         !self.had_error
     }
