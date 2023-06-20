@@ -4,7 +4,7 @@ use num_traits::FromPrimitive;
 
 use super::{
     chunk::{Chunk, OpCode},
-    scanner::{Scanner, Token, TokenType, self},
+    scanner::{Scanner, Token, TokenType},
     value::Value,
 };
 
@@ -163,6 +163,12 @@ impl Compiler {
             TokenType::Minus => self.emit_byte(OpCode::Subtract),
             TokenType::Star => self.emit_byte(OpCode::Multiply),
             TokenType::Slash => self.emit_byte(OpCode::Divide),
+            TokenType::BangEqual => self.emit_bytes(OpCode::Equal, OpCode::Not),
+            TokenType::EqualEqual => self.emit_byte(OpCode::Equal),
+            TokenType::Greater => self.emit_byte(OpCode::Greater),
+            TokenType::GreaterEqual => self.emit_bytes(OpCode::Less, OpCode::Not),
+            TokenType::Less => self.emit_byte(OpCode::Less),
+            TokenType::LessEqual => self.emit_bytes(OpCode::Greater, OpCode::Not),
             _ => unreachable!(),
         }
     }
@@ -186,7 +192,17 @@ impl Compiler {
         self.parse_precedence(Precedence::Unary);
 
         match operator_type {
-            TokenType::Minus => self.emit_byte(OpCode::Negate ),
+            TokenType::Bang => self.emit_byte(OpCode::Not),
+            TokenType::Minus => self.emit_byte(OpCode::Negate),
+            _ => unreachable!(),
+        }
+    }
+    fn literal(&mut self) {
+        let token_type = self.previous.token_type.clone();
+        match token_type {
+            TokenType::False => self.emit_byte(OpCode::False),
+            TokenType::True => self.emit_byte(OpCode::True),
+            TokenType::Nil => self.emit_byte(OpCode::Nil),
             _ => unreachable!(),
         }
     }
@@ -254,7 +270,7 @@ impl Compiler {
             ParseRule {
                 prefix: Some(Compiler::unary),
                 infix: Some(Compiler::binary),
-                precedence: Precedence::None,
+                precedence: Precedence::Term,
             },
         );
 
@@ -291,6 +307,89 @@ impl Compiler {
                 prefix: Some(Compiler::number),
                 infix: None,
                 precedence: Precedence::None,
+            },
+        );
+
+        self.rules.insert(
+            TokenType::False, 
+            ParseRule {
+                prefix: Some(Compiler::literal),
+                infix: None,
+                precedence: Precedence::None,
+            },
+        );
+
+        self.rules.insert(
+            TokenType::True, 
+            ParseRule {
+                prefix: Some(Compiler::literal),
+                infix: None,
+                precedence: Precedence::None,
+            },
+        );
+
+        self.rules.insert(
+            TokenType::Nil, 
+            ParseRule {
+                prefix: Some(Compiler::literal),
+                infix: None,
+                precedence: Precedence::None,
+            },
+        );
+
+        self.rules.insert(TokenType::Bang, 
+            ParseRule {
+                prefix: Some(Compiler::unary),
+                infix: None,
+                precedence: Precedence::None,
+            },
+        );
+
+        self.rules.insert(TokenType::BangEqual, 
+            ParseRule {
+                prefix: None,
+                infix: Some(Compiler::binary),
+                precedence: Precedence::Equality,
+            },
+        );
+
+        self.rules.insert(TokenType::EqualEqual, 
+            ParseRule {
+                prefix: None,
+                infix: Some(Compiler::binary),
+                precedence: Precedence::Equality,
+            },
+        );
+
+        self.rules.insert(TokenType::Greater, 
+            ParseRule {
+                prefix: None,
+                infix: Some(Compiler::binary),
+                precedence: Precedence::Comparison,
+            },
+        );
+
+        self.rules.insert(TokenType::GreaterEqual, 
+            ParseRule {
+                prefix: None,
+                infix: Some(Compiler::binary),
+                precedence: Precedence::Comparison,
+            },
+        );
+
+        self.rules.insert(TokenType::Less, 
+            ParseRule {
+                prefix: None,
+                infix: Some(Compiler::binary),
+                precedence: Precedence::Comparison,
+            },
+        );
+
+        self.rules.insert(TokenType::LessEqual, 
+            ParseRule {
+                prefix: None,
+                infix: Some(Compiler::binary),
+                precedence: Precedence::Comparison,
             },
         );
     }

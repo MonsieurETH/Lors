@@ -49,4 +49,12 @@ impl Value {
     pub fn from_bool(b: bool) -> Self {
         Value::Bool(b)
     }
+
+    pub fn is_falsey(&self) -> bool {
+        match self {
+            Value::Nil => true,
+            Value::Bool(b) => !*b,
+            _ => false,
+        }
+    }
 }

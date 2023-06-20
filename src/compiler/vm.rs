@@ -67,7 +67,7 @@ impl VM {
             let instruction = self.read_byte();
             match instruction {
                 OpCode::Return => {
-                    println!("{:?}", self.stack.pop());
+                    println!("Returning {:?}", self.stack.pop());
                     return InterpretResult::Ok;
                 }
                 OpCode::Negate => {
@@ -82,14 +82,26 @@ impl VM {
                 OpCode::Subtract => self.binary_op(OpCode::Subtract),
                 OpCode::Multiply => self.binary_op(OpCode::Multiply),
                 OpCode::Divide => self.binary_op(OpCode::Divide),
-                OpCode::Constant(value) => {
-                    //let constant: Value = self.read_constant();
-                    print!("{:?}", value);
-                    self.stack.push(value);
+                OpCode::Constant(value) => self.stack.push(value),
+                OpCode::True => self.stack.push(Value::Bool(true)),
+                OpCode::False =>  self.stack.push(Value::Bool(false)),
+                OpCode::Nil =>  self.stack.push(Value::Nil),
+                OpCode::Not => {
+                    let value = self.stack.pop().unwrap().is_falsey();
+                    self.stack.push(Value::Bool(value));
                 }
+                OpCode::Equal => {
+                    let b = self.stack.pop().unwrap();
+                    let a = self.stack.pop().unwrap();
+                    self.stack.push(Value::Bool(a == b)); // TODO valuesEqual
+                }
+                OpCode::Greater => {
+                    self.binary_op(OpCode::Greater);
+                }
+                OpCode::Less => {
+                    self.binary_op(OpCode::Less);
+                },
             }
-
-            //self.ip += 1;
         }
     }
 
@@ -110,24 +122,26 @@ impl VM {
 
     fn binary_op(&mut self, op: OpCode) {
         let top = self.stack.values.len();
-        println!("top: {}", top);
         if top < 2 {
             return self.runtime_error("Stack underflow".to_string());
         }
         let b = self.stack.pop().unwrap();
         let a = self.stack.pop().unwrap();
+        
         if !a.is_number() || !b.is_number() {
             return self.runtime_error("Operands must be numbers".to_string());
         }
 
         let res = match op {
-            OpCode::Add => a.as_number() + b.as_number(),
-            OpCode::Subtract => a.as_number() - b.as_number(),
-            OpCode::Multiply => a.as_number() * b.as_number(),
-            OpCode::Divide => a.as_number() / b.as_number(),
+            OpCode::Add => Value::from_f64(a.as_number() + b.as_number()),
+            OpCode::Subtract => Value::from_f64(a.as_number() - b.as_number()),
+            OpCode::Multiply => Value::from_f64(a.as_number() * b.as_number()),
+            OpCode::Divide => Value::from_f64(a.as_number() / b.as_number()),
+            OpCode::Less => Value::from_bool(a.as_number() < b.as_number()),
+            OpCode::Greater => Value::from_bool(a.as_number() > b.as_number()),
             _ => unreachable!(),
         };
 
-        self.stack.push(Value::from_f64(res));
+        self.stack.push(res);
     }
 }

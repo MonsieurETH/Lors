@@ -9,6 +9,13 @@ pub enum OpCode {
     Multiply,
     Divide,
     Constant(Value),
+    True,
+    False,
+    Nil,
+    Not,
+    Equal,
+    Greater,
+    Less,
 }
 
 #[derive(Debug, Clone)]
