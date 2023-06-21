@@ -88,7 +88,7 @@ impl VM {
                 OpCode::Nil =>  self.stack.push(Value::Nil),
                 OpCode::Not => {
                     let value = self.stack.pop().unwrap().is_falsey();
-                    self.stack.push(Value::Bool(value));
+                    self.stack.push(Value::Bool(!value));
                 }
                 OpCode::Equal => {
                     let b = self.stack.pop().unwrap();
