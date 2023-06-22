@@ -4,6 +4,7 @@ pub enum Value {
     Bool(bool),
     Nil,
     Number(f64),
+    String(String)
 }
 
 impl Value {
@@ -28,6 +29,13 @@ impl Value {
         }
     }
 
+    pub fn is_string(&self) -> bool {
+        match self {
+            Value::String(_) => true,
+            _ => false,
+        }
+    }
+
     pub fn as_bool(&self) -> bool {
         match self {
             Value::Bool(b) => *b,
@@ -42,12 +50,23 @@ impl Value {
         }
     }
 
+    pub fn as_string(&self) -> &str {
+        match self {
+            Value::String(s) => s,
+            _ => "",
+        }
+    }
+
     pub fn from_f64(n: f64) -> Self {
         Value::Number(n)
     }
 
     pub fn from_bool(b: bool) -> Self {
         Value::Bool(b)
+    }
+
+    pub fn from_string(s: String) -> Self {
+        Value::String(s)
     }
 
     pub fn is_falsey(&self) -> bool {

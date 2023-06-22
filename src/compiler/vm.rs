@@ -117,7 +117,6 @@ impl VM {
             OpCode::Constant(value) => value,
             _ => unreachable!(),
         }
-        //self.chunk.constants[index as usize].clone()
     }
 
     fn binary_op(&mut self, op: OpCode) {
@@ -128,20 +127,25 @@ impl VM {
         let b = self.stack.pop().unwrap();
         let a = self.stack.pop().unwrap();
         
-        if !a.is_number() || !b.is_number() {
-            return self.runtime_error("Operands must be numbers".to_string());
+        if a.is_number() && b.is_number() {
+            let res = match op {
+                OpCode::Add => Value::from_f64(a.as_number() + b.as_number()),
+                OpCode::Subtract => Value::from_f64(a.as_number() - b.as_number()),
+                OpCode::Multiply => Value::from_f64(a.as_number() * b.as_number()),
+                OpCode::Divide => Value::from_f64(a.as_number() / b.as_number()),
+                OpCode::Less => Value::from_bool(a.as_number() < b.as_number()),
+                OpCode::Greater => Value::from_bool(a.as_number() > b.as_number()),
+                _ => unreachable!(),
+            };
+            self.stack.push(res);
+        } else if a.is_string() && b.is_string() {
+            let res = match op {
+                OpCode::Add => Value::from_string(format!("{}{}", a.as_string(), b.as_string())),
+                _ => unreachable!(),
+            };
+            self.stack.push(res);
+        } else {
+            self.runtime_error("Operands must be two numbers or two strings.".to_string());
         }
-
-        let res = match op {
-            OpCode::Add => Value::from_f64(a.as_number() + b.as_number()),
-            OpCode::Subtract => Value::from_f64(a.as_number() - b.as_number()),
-            OpCode::Multiply => Value::from_f64(a.as_number() * b.as_number()),
-            OpCode::Divide => Value::from_f64(a.as_number() / b.as_number()),
-            OpCode::Less => Value::from_bool(a.as_number() < b.as_number()),
-            OpCode::Greater => Value::from_bool(a.as_number() > b.as_number()),
-            _ => unreachable!(),
-        };
-
-        self.stack.push(res);
     }
 }

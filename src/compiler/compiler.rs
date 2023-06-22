@@ -207,6 +207,11 @@ impl Compiler {
         }
     }
 
+    fn string(&mut self) { 
+        let value = self.previous.lexeme.clone();
+        self.emit_constant(Value::String(value));
+    }
+
     fn get_rule(&self, token_type: &TokenType) -> ParseRule {
         if self.rules.contains_key(&token_type) {
             return self.rules.get(&token_type).unwrap().clone();
@@ -390,6 +395,14 @@ impl Compiler {
                 prefix: None,
                 infix: Some(Compiler::binary),
                 precedence: Precedence::Comparison,
+            },
+        );
+
+        self.rules.insert(TokenType::String, 
+            ParseRule {
+                prefix: Some(Compiler::string),
+                infix: None,
+                precedence: Precedence::None,
             },
         );
     }
