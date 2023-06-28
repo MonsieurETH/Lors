@@ -1,9 +1,12 @@
+use std::collections::HashMap;
+
 use super::{chunk::{Chunk, OpCode}, value::Value, compiler::Compiler};
 
 pub struct VM {
     pub chunk: Chunk,
     pub ip: usize,
     pub stack: Stack,
+    pub globals: HashMap<String, Value>,
     pub debug_trace_execution: bool,
 }
 
@@ -35,6 +38,7 @@ impl VM {
             ip: 0,
             stack,
             debug_trace_execution: false,
+            globals: HashMap::new(),
         }
     }
 
@@ -67,7 +71,6 @@ impl VM {
             let instruction = self.read_byte();
             match instruction {
                 OpCode::Return => {
-                    println!("Returning {:?}", self.stack.pop());
                     return InterpretResult::Ok;
                 }
                 OpCode::Negate => {
@@ -100,6 +103,31 @@ impl VM {
                 }
                 OpCode::Less => {
                     self.binary_op(OpCode::Less);
+                },
+                OpCode::Print => {
+                    println!("{:?}", self.stack.pop().unwrap());
+                },
+                OpCode::Pop => {
+                    self.stack.pop().unwrap();
+                }
+                OpCode::DefineGlobal(name) => {
+                    self.globals.insert(name, self.stack.pop().unwrap());
+                },
+                OpCode::GetGlobal(name) => {
+                    if let Some(value) = self.globals.get(&name) {
+                        self.stack.push(value.clone());
+                    } else {
+                        self.runtime_error(format!("Undefined variable (get) '{}'.", name));
+                        return InterpretResult::RuntimeError;
+                    }
+                },
+                OpCode::SetGlobal(name) => {
+                    if self.globals.contains_key(&name) {
+                        self.globals.insert(name, self.stack.pop().unwrap());
+                    } else {
+                        self.runtime_error(format!("Undefined variable (set) '{}'.", name));
+                        return InterpretResult::RuntimeError;
+                    }
                 },
             }
         }

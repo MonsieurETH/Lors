@@ -16,12 +16,16 @@ pub enum OpCode {
     Equal,
     Greater,
     Less,
+    Print,
+    Pop,
+    DefineGlobal(String),
+    GetGlobal(String),
+    SetGlobal(String),
 }
 
 #[derive(Debug, Clone)]
 pub struct Chunk {
     pub code: Vec<OpCode>,
-    //pub constants: Vec<Value>,
     pub lines: Vec<usize>,
 }
 
@@ -29,7 +33,6 @@ impl Chunk {
     pub fn new() -> Chunk {
         Chunk {
             code: Vec::new(),
-            //constants: Vec::new(),
             lines: Vec::new(),
         }
     }
@@ -41,7 +44,6 @@ impl Chunk {
 
     pub fn add_constant(&mut self, value: Value, line: usize) -> u8 {
         self.write_chunk(OpCode::Constant(value), line);
-        //self.constants.push(value);
 
         (self.code.len() - 1) as u8
     }

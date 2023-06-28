@@ -166,10 +166,6 @@ impl Scanner {
     }
 
     fn identifier_type(&mut self) -> TokenType {
-        while self.peek().is_alphanumeric() {
-            self.advance();
-        }
-
         let text = &self.source[self.start..self.current];
         let token_type = match text {
             "and" => TokenType::And,
@@ -206,8 +202,11 @@ impl Scanner {
             return self.error_token("Unterminated string.");
         }
 
+        let str = self.make_token(TokenType::String);
         self.advance();
-        self.make_token(TokenType::String)
+
+        str
+        
     }
 
     fn number(&mut self) -> Token {
@@ -266,9 +265,14 @@ impl Scanner {
     }
 
     fn make_token(&self, token_type: TokenType) -> Token {
+        let start = match token_type {
+            TokenType::String => self.start + 1,
+            _ => self.start,
+        };
+            
         Token {
             token_type,
-            lexeme: self.source[self.start..self.current].to_string(),
+            lexeme: self.source[start..self.current].to_string(),
             line: self.line,
             pos: self.start,
         }

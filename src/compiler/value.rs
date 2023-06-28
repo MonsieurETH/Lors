@@ -1,10 +1,35 @@
+use std::collections::hash_map::DefaultHasher;
+use std::collections::{HashMap};
+use std::hash::{Hash, Hasher};
+use ordered_float::OrderedFloat;
 
-#[derive(Debug, Clone, PartialEq)]
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Value {
     Bool(bool),
     Nil,
-    Number(f64),
-    String(String)
+    Number(OrderedFloat<f64>),
+    String(String),
+    Hashmap(HashMap<Value, Value>),
+}
+
+impl Hash for Value {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        match self {
+            Value::Bool(b) => b.hash(state),
+            Value::Nil => ().hash(state),
+            Value::Number(n) => n.hash(state),
+            Value::String(s) => s.hash(state),
+            Value::Hashmap(m) => {
+                let mut hasher = DefaultHasher::new();
+                for (k, v) in m {
+                    k.hash(&mut hasher);
+                    v.hash(&mut hasher);
+                }
+                hasher.finish().hash(state);
+            }
+        }
+    }
 }
 
 impl Value {
@@ -43,10 +68,10 @@ impl Value {
         }
     }
 
-    pub fn as_number(&self) -> f64 {
+    pub fn as_number(&self) -> OrderedFloat<f64> {
         match self {
             Value::Number(n) => *n,
-            _ => 0.0,
+            _ => OrderedFloat(0.0),
         }
     }
 
@@ -57,7 +82,7 @@ impl Value {
         }
     }
 
-    pub fn from_f64(n: f64) -> Self {
+    pub fn from_f64(n: OrderedFloat<f64>) -> Self {
         Value::Number(n)
     }
 
