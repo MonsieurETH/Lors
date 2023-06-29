@@ -137,6 +137,15 @@ impl VM {
                     let value = self.stack.values[0].clone();
                     self.stack.values[index] = value;
                 },
+                OpCode::JumpIfFalse(offset) => {
+                    let value = self.stack.pop().unwrap().is_falsey();
+                    if value {
+                        self.ip += offset as usize;
+                    }
+                },
+                OpCode::Jump(offset) => {
+                    self.ip += offset as usize;
+                },
             }
         }
     }

@@ -23,6 +23,8 @@ pub enum OpCode {
     SetGlobal(String),
     GetLocal(usize),
     SetLocal(usize),
+    JumpIfFalse(u16),
+    Jump(u16),
 }
 
 #[derive(Debug, Clone)]
@@ -49,8 +51,4 @@ impl Chunk {
 
         (self.code.len() - 1) as u8
     }
-}
-
-pub struct ValueArray {
-    pub values: Vec<u8>,
 }
