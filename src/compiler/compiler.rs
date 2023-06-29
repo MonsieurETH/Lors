@@ -202,6 +202,7 @@ impl Compiler {
 
     fn define_variable(&mut self, name: String) {
         if self.locals.scope_depth > 0 {
+            self.mark_initialized();
             return;
         }
 
@@ -238,6 +239,14 @@ impl Compiler {
 
 
         self.add_local(self.previous.clone());
+    }
+
+    fn mark_initialized(&mut self) {
+        if self.locals.scope_depth == 0 {
+            return;
+        }
+
+        self.locals.list.last_mut().unwrap().depth = self.locals.scope_depth;
     }
 
     fn add_local(&mut self, var: Token) {
