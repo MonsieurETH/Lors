@@ -21,6 +21,8 @@ pub enum OpCode {
     DefineGlobal(String),
     GetGlobal(String),
     SetGlobal(String),
+    GetLocal(usize),
+    SetLocal(usize),
 }
 
 #[derive(Debug, Clone)]

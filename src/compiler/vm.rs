@@ -105,7 +105,7 @@ impl VM {
                     self.binary_op(OpCode::Less);
                 },
                 OpCode::Print => {
-                    println!("{:?}", self.stack.pop().unwrap());
+                    println!("Print: {:?}", self.stack.pop().unwrap());
                 },
                 OpCode::Pop => {
                     self.stack.pop().unwrap();
@@ -128,6 +128,14 @@ impl VM {
                         self.runtime_error(format!("Undefined variable (set) '{}'.", name));
                         return InterpretResult::RuntimeError;
                     }
+                },
+                OpCode::GetLocal(index) => {
+                    let value = self.stack.values[index].clone();
+                    self.stack.push(value);
+                },
+                OpCode::SetLocal(index) => {
+                    let value = self.stack.values[0].clone();
+                    self.stack.values[index] = value;
                 },
             }
         }

@@ -1,5 +1,8 @@
-var breakfast = "beignets";
-var beverage = "cafe au lait";
-breakfast = "beignets with " + beverage;
-
-print breakfast;
+{
+  var a = "local";
+  {
+    var a = "shadow";
+    print a; // expect: shadow
+  }
+  print a; // expect: local
+}
