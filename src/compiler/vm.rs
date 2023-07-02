@@ -130,6 +130,7 @@ impl VM {
                     }
                 },
                 OpCode::GetLocal(index) => {
+                    // This should increment the program counter
                     let value = self.stack.values[index].clone();
                     self.stack.push(value);
                 },
