@@ -25,6 +25,7 @@ pub enum OpCode {
     SetLocal(usize),
     JumpIfFalse(u16),
     Jump(u16),
+    Loop(u16),
 }
 
 #[derive(Debug, Clone)]

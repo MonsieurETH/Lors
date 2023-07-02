@@ -146,6 +146,9 @@ impl VM {
                 OpCode::Jump(offset) => {
                     self.ip += offset as usize;
                 },
+                OpCode::Loop(offset) => {
+                    self.ip -= offset as usize;
+                },
             }
         }
     }
