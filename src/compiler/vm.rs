@@ -105,7 +105,7 @@ impl VM {
                 OpCode::Equal => {
                     let b = self.stack.pop().unwrap();
                     let a = self.stack.pop().unwrap();
-                    self.stack.push(Value::Bool(a == b)); // TODO valuesEqual
+                    self.stack.push(Value::Bool(a == b));
                 }
                 OpCode::Greater => {
                     self.binary_op(OpCode::Greater);
@@ -139,7 +139,6 @@ impl VM {
                     }
                 },
                 OpCode::GetLocal(index) => {
-                    // This should increment the program counter
                     let value = self.stack.peek_pos(index).unwrap().clone();
                     self.stack.push(value);
                 },
