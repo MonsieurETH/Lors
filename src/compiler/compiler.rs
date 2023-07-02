@@ -274,12 +274,11 @@ impl Compiler {
     }
 
     fn emit_loop(&mut self, loop_start: usize) {
-        self.emit_byte(OpCode::Loop(loop_start.try_into().unwrap()));
-
         let offset = self.compiling_chunk.code.len() - loop_start;
         if offset > u16::MAX as usize {
             self.error("Loop body too large.");
         }
+        self.emit_byte(OpCode::Loop(offset.try_into().unwrap()));
     }
 
     fn emit_jump(&mut self, instruction: OpCode) -> usize {
@@ -302,13 +301,12 @@ impl Compiler {
             }
             _ => unreachable!(),
         }
-        //self.compiling_chunk.code[offset - 1] = OpCode::JumpIfFalse(jump.try_into().unwrap());
     }
 
     fn expression_statement(&mut self) {
         self.expression();
         self.consume(TokenType::Semicolon, "Expect ';' after expression.");
-        //self.emit_byte(OpCode::Pop);
+        self.emit_byte(OpCode::Pop);
     }
 
     fn var_declaration(&mut self) {

@@ -22,6 +22,14 @@ impl Stack {
     pub fn pop(&mut self) -> Option<Value> {
         self.values.pop()
     }
+
+    pub fn peek(&self) -> Option<&Value> {
+        self.values.last()
+    }
+
+    pub fn peek_pos(&self, pos: usize) -> Option<&Value> {
+        self.values.get(pos)
+    }
 }
 
 pub enum InterpretResult {
@@ -69,6 +77,7 @@ impl VM {
     pub fn run(&mut self) -> InterpretResult {
         loop {
             let instruction = self.read_byte();
+            //println!("Instruction: {:?}", instruction);
             match instruction {
                 OpCode::Return => {
                     return InterpretResult::Ok;
@@ -105,7 +114,7 @@ impl VM {
                     self.binary_op(OpCode::Less);
                 },
                 OpCode::Print => {
-                    println!("Print: {:?}", self.stack.pop().unwrap());
+                    println!("Print: {:?}", self.stack.peek().unwrap());
                 },
                 OpCode::Pop => {
                     self.stack.pop().unwrap();
@@ -131,15 +140,15 @@ impl VM {
                 },
                 OpCode::GetLocal(index) => {
                     // This should increment the program counter
-                    let value = self.stack.values[index].clone();
+                    let value = self.stack.peek_pos(index).unwrap().clone();
                     self.stack.push(value);
                 },
                 OpCode::SetLocal(index) => {
-                    let value = self.stack.values[0].clone();
+                    let value = self.stack.peek().unwrap().clone();
                     self.stack.values[index] = value;
                 },
                 OpCode::JumpIfFalse(offset) => {
-                    let value = self.stack.pop().unwrap().is_falsey();
+                    let value = self.stack.peek().unwrap().is_falsey();
                     if value {
                         self.ip += offset as usize;
                     }
