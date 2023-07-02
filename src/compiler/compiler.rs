@@ -107,10 +107,6 @@ impl Compiler {
     fn declaration(&mut self) {
         if self.match_next(TokenType::Var) {
             self.var_declaration();
-        } else if self.match_next(TokenType::LeftBrace) {
-            self.begin_scope();
-            self.block();
-            self.end_scope();
         } else {
             self.statement();
         }
@@ -176,6 +172,10 @@ impl Compiler {
             self.if_statement();
         } else if self.match_next(TokenType::While) {
             self.while_statement();
+        } else if self.match_next(TokenType::LeftBrace) {
+            self.begin_scope();
+            self.block();
+            self.end_scope();
         } else {
             self.expression_statement();
         }
@@ -293,8 +293,16 @@ impl Compiler {
         if jump > u16::MAX as usize {
             self.error("Too much code to jump over.");
         }
-
-        self.compiling_chunk.code[offset - 1] = OpCode::JumpIfFalse(jump.try_into().unwrap());
+        match self.compiling_chunk.code[offset - 1] {
+            OpCode::JumpIfFalse(_) => {
+                self.compiling_chunk.code[offset - 1] = OpCode::JumpIfFalse(jump.try_into().unwrap());
+            }
+            OpCode::Jump(_) => {
+                self.compiling_chunk.code[offset - 1] = OpCode::Jump(jump.try_into().unwrap());
+            }
+            _ => unreachable!(),
+        }
+        //self.compiling_chunk.code[offset - 1] = OpCode::JumpIfFalse(jump.try_into().unwrap());
     }
 
     fn expression_statement(&mut self) {
